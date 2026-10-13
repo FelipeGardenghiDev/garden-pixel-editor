@@ -8,12 +8,14 @@ import { Timeline } from './components/Timeline';
 import { RightSidebar } from './components/RightSidebar';
 import { StatusBar } from './components/StatusBar';
 import { FloatingPreview } from './components/FloatingPreview';
+import { ShortcutsModal } from './components/ShortcutsModal';
 import { downloadProjectFile } from './core/project-file';
 
 export const App: React.FC = () => {
   // Stable reference to the EditorEngine instance via state initializer
   const [engine] = useState(() => new EditorEngine(48, 48));
   const [, setTick] = useState(0);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
 
   // Re-render UI when engine state changes
   useEffect(() => {
@@ -83,6 +85,9 @@ export const App: React.FC = () => {
         engine.setTool('bucket');
       } else if (e.key.toLowerCase() === 'i') {
         engine.setTool('picker');
+      } else if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setIsShortcutsOpen(prev => !prev);
       }
     };
 
@@ -102,7 +107,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100">
-      <TopBar engine={engine} />
+      <TopBar engine={engine} onOpenShortcuts={() => setIsShortcutsOpen(true)} />
       <BrushSettingsBar engine={engine} />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -118,6 +123,11 @@ export const App: React.FC = () => {
       </div>
 
       <StatusBar engine={engine} />
+
+      <ShortcutsModal
+        isOpen={isShortcutsOpen}
+        onClose={() => setIsShortcutsOpen(false)}
+      />
     </div>
   );
 };

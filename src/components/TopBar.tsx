@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
@@ -13,9 +13,10 @@ import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave 
 
 interface TopBarProps {
   engine: EditorEngine;
+  onOpenShortcuts?: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
+export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts }) => {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [isNormalMapModalOpen, setIsNormalMapModalOpen] = useState<boolean>(false);
   const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
@@ -293,6 +294,14 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
             </div>
           )}
         </div>
+
+        <button
+          onClick={onOpenShortcuts}
+          className="p-1.5 text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 rounded-lg transition-colors ml-1"
+          title="Atalhos de Teclado (?)"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
       </div>
     </header>
 

@@ -119,6 +119,7 @@ garden-pixel-editor/
 │   │   ├── ColorSwapModal.tsx       # Modal de substituição global de cores
 │   │   ├── PaletteModal.tsx         # Modal de importação/exportação de paletas
 │   │   ├── NormalMapModal.tsx       # Modal de geração de mapa de normais e prévia 2.5D
+│   │   ├── ShortcutsModal.tsx       # Modal de ajuda rápida com atalhos categorizados (?)
 │   │   └── SpritesheetModal.tsx     # Modal de exportação de spritesheets/atlas
 │   ├── App.tsx                      # Casca da aplicação e listener de atalhos globais
 │   ├── index.css                    # Configuração de tema e Tailwind CSS v4
@@ -155,6 +156,7 @@ garden-pixel-editor/
 | <kbd>Ctrl+A</kbd> | Selecionar tudo |
 | <kbd>Ctrl+Z</kbd> | Desfazer (*Undo*) |
 | <kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd> | Refazer (*Redo*) |
+| <kbd>?</kbd> | Abrir / Fechar Guia Visual de Atalhos de Teclado |
 
 ---
 
@@ -256,7 +258,8 @@ npx tsc -b
 
 - [x] **Suíte de Testes Automatizados:** 46 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, camadas, paletas e exportação GIF).
 - [x] **Pipeline de CI/CD (GitHub Actions):** Validação automática de lint, build, testes e deploy para GitHub Pages.
-- [x] **Gerenciamento Avançado de Camadas:** Controle fino de opacidade por camada (0–100%), reordenação (mover para cima/baixo), duplicação, renomeação inline e mesclagem descendente (*Merge Down*).
+- [x] **Gerenciamento Avançado de Camadas:** Controle fino de opacidade por camada (0–100%), reordenação por setas e **Drag & Drop nativo**, duplicação, renomeação inline e mesclagem (*Merge Down*).
+- [x] **Guia Visual de Atalhos de Teclado (?):** Modal categorizado de atalhos e produtividade acionável pela tecla `?` ou botão na barra superior.
 - [x] **Janela de Prévia Flutuante 1:1 / 2x:** Pré-visualização em escala real com reprodução de animação independente, controle de escala (1x/2x) e recolhimento (*collapse*).
 - [x] **Exportação de GIF Animado (.gif):** Codificador nativo via `gifenc` com controle de FPS, fundo transparente ou opaco, escalonamento nearest-neighbor (1x a 16x) e pré-visualização ao vivo.
 - [x] **Diálogo de Novo Projeto & Canvas Resize:** Presets clássicos de 16×16 a 128×128, dimensões livres (8 a 256px), trava 1:1 e redimensionamento não-destrutivo com âncora.

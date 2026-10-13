@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload,
-  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check
+  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check, GripVertical
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { PRESET_PALETTES } from '../core/palettes';
@@ -25,6 +25,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
   const [isPaletteModalOpen, setIsPaletteModalOpen] = useState<boolean>(false);
   const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string>('');
+  const [draggedLayerIdx, setDraggedLayerIdx] = useState<number | null>(null);
+  const [dragOverLayerIdx, setDragOverLayerIdx] = useState<number | null>(null);
 
   useEffect(() => {
     try {
@@ -183,17 +185,54 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
               return (
                 <div
                   key={layer.id}
+                  draggable={!isEditing}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/plain', actualIdx.toString());
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDraggedLayerIdx(actualIdx);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (dragOverLayerIdx !== actualIdx) {
+                      setDragOverLayerIdx(actualIdx);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverLayerIdx === actualIdx) {
+                      setDragOverLayerIdx(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggedLayerIdx !== null && draggedLayerIdx !== actualIdx) {
+                      engine.moveLayer(draggedLayerIdx, actualIdx);
+                    }
+                    setDraggedLayerIdx(null);
+                    setDragOverLayerIdx(null);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedLayerIdx(null);
+                    setDragOverLayerIdx(null);
+                  }}
                   onClick={() => {
                     engine.document.activeLayerId = layer.id;
                     engine.notifyState();
                   }}
                   className={`group flex items-center justify-between px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${
-                    isSelected
+                    draggedLayerIdx === actualIdx ? 'opacity-40 border-dashed border-cyan-400' : ''
+                  } ${
+                    dragOverLayerIdx === actualIdx && draggedLayerIdx !== actualIdx
+                      ? 'border-cyan-400 ring-2 ring-cyan-500/50 bg-cyan-950/40'
+                      : isSelected
                       ? 'bg-zinc-800 border-zinc-700 text-white font-medium'
                       : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-400 hover:text-zinc-200'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <span title="Arrastar para reordenar camada" className="cursor-grab active:cursor-grabbing shrink-0 flex items-center">
+                      <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400" />
+                    </span>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
