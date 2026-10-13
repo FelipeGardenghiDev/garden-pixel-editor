@@ -36,7 +36,10 @@ export const ToolBar: React.FC<ToolBarProps> = ({ engine }) => {
   ];
 
   return (
-    <aside className="w-14 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-3 gap-1.5 shrink-0 select-none z-10">
+    <aside 
+      className="w-14 bg-zinc-900 border-r border-zinc-800 flex flex-col items-center py-2.5 gap-1.5 shrink-0 select-none z-10 overflow-y-auto"
+      aria-label="Barra de Ferramentas"
+    >
       {tools.map((t) => {
         const Icon = t.icon;
         const isActive = engine.currentTool === t.id;
@@ -52,6 +55,7 @@ export const ToolBar: React.FC<ToolBarProps> = ({ engine }) => {
                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/80'
             }`}
             title={`${t.label} (${t.hotkey})`}
+            aria-label={`${t.label} (Atalho: ${t.hotkey})`}
           >
             <Icon className="w-5 h-5" />
             
@@ -72,6 +76,7 @@ export const ToolBar: React.FC<ToolBarProps> = ({ engine }) => {
         onClick={() => engine.flipHorizontal()}
         className="w-10 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800/80 transition-all"
         title="Espelhar / Inverter Horizontal (Seleção ou Camada)"
+        aria-label="Espelhar Horizontal"
       >
         <FlipHorizontal className="w-4 h-4" />
       </button>
@@ -80,6 +85,7 @@ export const ToolBar: React.FC<ToolBarProps> = ({ engine }) => {
         onClick={() => engine.flipVertical()}
         className="w-10 h-9 rounded-xl flex items-center justify-center text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800/80 transition-all"
         title="Espelhar / Inverter Vertical (Seleção ou Camada)"
+        aria-label="Espelhar Vertical"
       >
         <FlipVertical className="w-4 h-4" />
       </button>

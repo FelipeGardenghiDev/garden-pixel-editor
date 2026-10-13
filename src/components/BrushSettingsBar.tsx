@@ -15,7 +15,11 @@ export const BrushSettingsBar: React.FC<BrushSettingsBarProps> = ({ engine }) =>
 
   return (
     <>
-      <div className="h-9 bg-zinc-900/90 border-b border-zinc-800/80 px-4 flex items-center justify-between text-xs select-none shrink-0 z-10 backdrop-blur-xs">
+      <div 
+        className="h-9 bg-zinc-900/90 border-b border-zinc-800/80 px-3 sm:px-4 flex items-center justify-between text-xs select-none shrink-0 z-10 backdrop-blur-xs overflow-x-auto gap-4"
+        role="toolbar" 
+        aria-label="Opções do Pincel e Ferramentas"
+      >
         {/* Left: Brush Size & Pixel-Perfect */}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">

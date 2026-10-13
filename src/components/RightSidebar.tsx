@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload,
-  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check, GripVertical
+  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check, GripVertical, X, PanelRightClose, PanelRightOpen
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { PRESET_PALETTES } from '../core/palettes';
@@ -10,9 +10,19 @@ import { PaletteModal } from './PaletteModal';
 
 interface RightSidebarProps {
   engine: EditorEngine;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
+  isCollapsedDesktop?: boolean;
+  onToggleCollapseDesktop?: () => void;
 }
 
-export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
+export const RightSidebar: React.FC<RightSidebarProps> = ({ 
+  engine, 
+  isOpenMobile = false, 
+  onCloseMobile,
+  isCollapsedDesktop = false,
+  onToggleCollapseDesktop
+}) => {
   const [customPalettes, setCustomPalettes] = useState<Palette[]>(() => {
     try {
       const saved = localStorage.getItem('garden_custom_palettes');
@@ -49,7 +59,37 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
 
   return (
     <>
-      <aside className="w-64 bg-zinc-900 border-l border-zinc-800 flex flex-col h-full select-none shrink-0 overflow-y-auto">
+      {/* Mobile Drawer Backdrop */}
+      {isOpenMobile && (
+        <div 
+          className="fixed inset-0 bg-black/65 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-150"
+          onClick={onCloseMobile}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Desktop Expand Pill when collapsed */}
+      {isCollapsedDesktop && (
+        <button
+          onClick={onToggleCollapseDesktop}
+          className="hidden lg:flex absolute right-0 top-16 z-20 p-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border-l border-y border-zinc-700/80 rounded-l-lg shadow-xl backdrop-blur-xs transition-all"
+          title="Expandir Painel Lateral"
+          aria-label="Expandir Painel Lateral"
+        >
+          <PanelRightOpen className="w-4 h-4 text-cyan-400" />
+        </button>
+      )}
+
+      <aside 
+        className={`${
+          isCollapsedDesktop ? 'lg:hidden' : 'lg:flex lg:w-64'
+        } ${
+          isOpenMobile 
+            ? 'fixed inset-y-0 right-0 z-50 flex w-72 max-w-[85vw] shadow-2xl animate-in slide-in-from-right duration-200' 
+            : 'hidden'
+        } bg-zinc-900 border-l border-zinc-800 flex-col h-full select-none shrink-0 overflow-y-auto`}
+        aria-label="Painel Lateral de Cores e Camadas"
+      >
         {/* 1. Color Picker & Palette Section */}
         <div className="p-3 border-b border-zinc-800">
           <div className="flex items-center justify-between mb-2">
@@ -59,7 +99,31 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
             </span>
 
             <div className="flex items-center gap-1">
-              <select
+              {onToggleCollapseDesktop && (
+                <button
+                  onClick={onToggleCollapseDesktop}
+                  className="hidden lg:flex p-1 text-zinc-400 hover:text-zinc-200 rounded transition-colors"
+                  title="Recolher Painel Lateral"
+                  aria-label="Recolher Painel Lateral"
+                >
+                  <PanelRightClose className="w-3.5 h-3.5" />
+                </button>
+              )}
+              {onCloseMobile && (
+                <button
+                  onClick={onCloseMobile}
+                  className="lg:hidden p-1 text-zinc-400 hover:text-zinc-200 rounded transition-colors"
+                  title="Fechar Painel"
+                  aria-label="Fechar Painel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 mb-2">
+            <select
                 value={selectedPaletteId}
                 onChange={(e) => setSelectedPaletteId(e.target.value)}
                 className="bg-zinc-950 text-zinc-300 text-xs border border-zinc-800 rounded px-1.5 py-0.5 outline-none focus:border-cyan-500 max-w-28 truncate"
@@ -90,7 +154,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
                 <Upload className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
 
         {/* Current Color Indicator */}
         <div className="flex items-center gap-2 mb-3 bg-zinc-950 p-2 rounded-lg border border-zinc-800/80">

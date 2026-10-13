@@ -75,6 +75,9 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
       <div 
         className="bg-zinc-900 border border-zinc-700/90 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-950/60">
@@ -83,7 +86,7 @@ export const ShortcutsModal: React.FC<ShortcutsModalProps> = ({ isOpen, onClose 
               <Keyboard className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-bold text-sm text-zinc-100 flex items-center gap-2">
+              <h2 id="shortcuts-title" className="font-bold text-sm text-zinc-100 flex items-center gap-2">
                 Atalhos de Teclado & Produtividade
                 <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-mono">
                   Ajuda

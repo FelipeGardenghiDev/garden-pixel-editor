@@ -16,6 +16,8 @@ export const App: React.FC = () => {
   const [engine] = useState(() => new EditorEngine(48, 48));
   const [, setTick] = useState(0);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState<boolean>(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState<boolean>(false);
 
   // Re-render UI when engine state changes
   useEffect(() => {
@@ -107,7 +109,11 @@ export const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100">
-      <TopBar engine={engine} onOpenShortcuts={() => setIsShortcutsOpen(true)} />
+      <TopBar 
+        engine={engine} 
+        onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        onToggleSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+      />
       <BrushSettingsBar engine={engine} />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -119,7 +125,13 @@ export const App: React.FC = () => {
           </div>
           <Timeline engine={engine} />
         </main>
-        <RightSidebar engine={engine} />
+        <RightSidebar 
+          engine={engine}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          isCollapsedDesktop={isDesktopSidebarCollapsed}
+          onToggleCollapseDesktop={() => setIsDesktopSidebarCollapsed(prev => !prev)}
+        />
       </div>
 
       <StatusBar engine={engine} />

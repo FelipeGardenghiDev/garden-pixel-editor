@@ -354,24 +354,90 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
     }
   }, [engine, render]);
 
+  // Multi-touch tracking for pinch-to-zoom and two-finger pan on tablets & smartphones
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const initialPinchDistRef = useRef<number | null>(null);
+  const initialPinchZoomRef = useRef<number>(engine.viewport.zoom);
+  const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
+
   // Event handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    engine.handlePointerDown(e, rect);
+
+    activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointersRef.current.size === 1) {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      engine.handlePointerDown(e, rect);
+    } else if (activePointersRef.current.size === 2) {
+      // 2 fingers down: cancel single-touch drawing and start pinch-zoom / pan
+      engine.cancelDrawing();
+
+      const pts = Array.from(activePointersRef.current.values());
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      initialPinchDistRef.current = dist;
+      initialPinchZoomRef.current = engine.viewport.zoom;
+      lastPinchCenterRef.current = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
+      };
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    engine.handlePointerMove(e, rect);
+
+    if (activePointersRef.current.has(e.pointerId)) {
+      activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Two-finger multi-touch gesture
+    if (
+      activePointersRef.current.size === 2 &&
+      initialPinchDistRef.current !== null &&
+      lastPinchCenterRef.current !== null
+    ) {
+      const pts = Array.from(activePointersRef.current.values());
+      const curDist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      const curCenter = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
+      };
+
+      // 1. Two-finger Pan
+      const dx = curCenter.x - lastPinchCenterRef.current.x;
+      const dy = curCenter.y - lastPinchCenterRef.current.y;
+      engine.viewport.panBy(dx, dy);
+      lastPinchCenterRef.current = curCenter;
+
+      // 2. Pinch Zoom
+      if (initialPinchDistRef.current > 0) {
+        const ratio = curDist / initialPinchDistRef.current;
+        const targetZoom = Math.max(1, Math.min(64, Math.round(initialPinchZoomRef.current * ratio)));
+        engine.viewport.setZoom(targetZoom);
+      }
+      return;
+    }
+
+    if (activePointersRef.current.size <= 1) {
+      engine.handlePointerMove(e, rect);
+    }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    engine.handlePointerUp(e, rect);
+    activePointersRef.current.delete(e.pointerId);
+
+    if (activePointersRef.current.size < 2) {
+      initialPinchDistRef.current = null;
+      lastPinchCenterRef.current = null;
+    }
+
+    if (activePointersRef.current.size === 0 && rect) {
+      engine.handlePointerUp(e, rect);
+    }
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
@@ -389,10 +455,14 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
     >
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 block touch-none"
+        className="absolute inset-0 block touch-none focus:outline-none"
+        tabIndex={0}
+        aria-label="Canvas de Pixel Art"
+        role="region"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       />
     </div>
   );

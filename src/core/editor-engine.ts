@@ -104,6 +104,12 @@ export class EditorEngine {
     this.notifyState();
   }
 
+  public cancelDrawing(): void {
+    this.isDrawing = false;
+    this.previewBuffer.clear();
+    this.notifyState();
+  }
+
   public setProjectionMode(mode: ProjectionMode): void {
     this.projectionMode = mode;
     this.previewBuffer.clear();
