@@ -13,27 +13,32 @@ export class DrawRectCommand implements ICommand {
   private rect: Rect;
   private oldPixels: Uint32Array;
   private newPixels: Uint32Array;
+  private onMutate?: () => void;
 
   constructor(
     description: string,
     buffer: PixelBuffer,
     rect: Rect,
     oldPixels: Uint32Array,
-    newPixels: Uint32Array
+    newPixels: Uint32Array,
+    onMutate?: () => void
   ) {
     this.description = description;
     this.buffer = buffer;
     this.rect = rect;
     this.oldPixels = oldPixels;
     this.newPixels = newPixels;
+    this.onMutate = onMutate;
   }
 
   public execute(): void {
     this.buffer.blitRect(this.rect, this.newPixels);
+    this.onMutate?.();
   }
 
   public undo(): void {
     this.buffer.blitRect(this.rect, this.oldPixels);
+    this.onMutate?.();
   }
 }
 

@@ -64,6 +64,23 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
         }
       }
 
+      // Overlay floating selection buffer if active
+      if (engine.floatingSelection) {
+        const fs = engine.floatingSelection;
+        for (let r = 0; r < fs.rect.height; r++) {
+          const curY = fs.rect.y + r;
+          if (curY < 0 || curY >= docH) continue;
+          for (let c = 0; c < fs.rect.width; c++) {
+            const curX = fs.rect.x + c;
+            if (curX < 0 || curX >= docW) continue;
+            const col = fs.buffer.getPixel(c, r);
+            if ((col & 0xFF000000) !== 0) {
+              finalData[curY * docW + curX] = col;
+            }
+          }
+        }
+      }
+
       const imgData = offCtx.createImageData(docW, docH);
       const uint32View = new Uint32Array(imgData.data.buffer);
       uint32View.set(finalData);
@@ -105,6 +122,43 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
 
     // 4. Draw central canvas checkerboard
     drawCheckerboard(panX, panY, docScreenW, docScreenH, Math.max(4, zoom / 2));
+
+    // 4.5. Draw Onion Skinning Ghosts (if enabled)
+    if (engine.onionSkinning && engine.document.frames.length > 1) {
+      const prevIdx = (engine.document.activeFrameIndex - 1 + engine.document.frames.length) % engine.document.frames.length;
+      const prevComposite = engine.document.composite(undefined, prevIdx);
+      const prevCanvas = document.createElement('canvas');
+      prevCanvas.width = docW;
+      prevCanvas.height = docH;
+      const prevCtx = prevCanvas.getContext('2d');
+      if (prevCtx) {
+        const imgData = prevCtx.createImageData(docW, docH);
+        new Uint32Array(imgData.data.buffer).set(prevComposite.data);
+        prevCtx.putImageData(imgData, 0, 0);
+
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(prevCanvas, panX, panY, docScreenW, docScreenH);
+        ctx.restore();
+      }
+
+      const nextIdx = (engine.document.activeFrameIndex + 1) % engine.document.frames.length;
+      const nextComposite = engine.document.composite(undefined, nextIdx);
+      const nextCanvas = document.createElement('canvas');
+      nextCanvas.width = docW;
+      nextCanvas.height = docH;
+      const nextCtx = nextCanvas.getContext('2d');
+      if (nextCtx) {
+        const imgData = nextCtx.createImageData(docW, docH);
+        new Uint32Array(imgData.data.buffer).set(nextComposite.data);
+        nextCtx.putImageData(imgData, 0, 0);
+
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.drawImage(nextCanvas, panX, panY, docScreenW, docScreenH);
+        ctx.restore();
+      }
+    }
 
     // 5. Draw crisp pixel document
     ctx.imageSmoothingEnabled = false;
@@ -173,27 +227,69 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
       ctx.restore();
     }
 
-    // 8. Draw Cursor Hover Indicator
+    // 8. Draw Selection Marquee (Marching Ants / Dashed Box)
+    if (engine.selectionRect) {
+      const { x, y, width, height } = engine.selectionRect;
+      const sx = panX + x * zoom;
+      const sy = panY + y * zoom;
+      const sw = width * zoom;
+      const sh = height * zoom;
+
+      ctx.save();
+      ctx.strokeStyle = '#09090b';
+      ctx.lineWidth = 2.5;
+      ctx.strokeRect(sx - 0.5, sy - 0.5, sw + 1, sh + 1);
+
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.lineDashOffset = (Date.now() / 60) % 8;
+      ctx.strokeRect(sx - 0.5, sy - 0.5, sw + 1, sh + 1);
+      ctx.restore();
+    }
+
+    // 9. Draw Cursor Hover Indicator (with brush size support)
     if (engine.currentHoverPixel) {
       const hx = engine.currentHoverPixel.x;
       const hy = engine.currentHoverPixel.y;
+      const size = (engine.currentTool === 'pencil' || engine.currentTool === 'eraser' || engine.currentTool === 'dither')
+        ? engine.brushSize
+        : 1;
+
       if (hx >= 0 && hx < docW && hy >= 0 && hy < docH) {
         const sx = panX + hx * zoom;
         const sy = panY + hy * zoom;
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
-        ctx.strokeRect(sx, sy, zoom, zoom);
+        ctx.strokeRect(sx, sy, zoom * size, zoom * size);
       }
     }
   }, [engine]);
 
-  // Subscribe to engine state changes
+  // Subscribe to engine state changes & animate marching ants
   useEffect(() => {
+    let animId: number;
     const unsub = engine.onStateChange(() => {
       render();
     });
-    render();
-    return unsub;
+
+    const loop = () => {
+      if (engine.selectionRect) {
+        render();
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    if (engine.selectionRect) {
+      animId = requestAnimationFrame(loop);
+    } else {
+      render();
+    }
+
+    return () => {
+      unsub();
+      cancelAnimationFrame(animId);
+    };
   }, [engine, render]);
 
   // Center canvas on first load

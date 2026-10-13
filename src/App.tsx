@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { EditorEngine } from './core/editor-engine';
 import { TopBar } from './components/TopBar';
+import { BrushSettingsBar } from './components/BrushSettingsBar';
 import { ToolBar } from './components/ToolBar';
 import { ViewportCanvas } from './components/ViewportCanvas';
+import { Timeline } from './components/Timeline';
 import { RightSidebar } from './components/RightSidebar';
 import { StatusBar } from './components/StatusBar';
+import { downloadProjectFile } from './core/project-file';
 
 export const App: React.FC = () => {
   // Stable reference to the EditorEngine instance via state initializer
@@ -27,6 +30,9 @@ export const App: React.FC = () => {
 
       if (e.code === 'Space') {
         engine.isSpacePressed = true;
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        downloadProjectFile(engine);
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
         e.preventDefault();
         if (e.shiftKey) {
@@ -37,16 +43,41 @@ export const App: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         engine.history.redo();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        engine.selectAll();
+      } else if (e.key === 'Escape') {
+        engine.clearSelection();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        engine.deleteSelection();
+      } else if (e.key === '[') {
+        engine.shadeActiveColor('darker');
+      } else if (e.key === ']') {
+        engine.shadeActiveColor('lighter');
+      } else if (e.key === ',') {
+        engine.prevFrame();
+      } else if (e.key === '.') {
+        engine.nextFrame();
       } else if (e.key.toLowerCase() === 'b') {
         engine.setTool('pencil');
+      } else if (e.key.toLowerCase() === 'd') {
+        engine.setTool('dither');
       } else if (e.key.toLowerCase() === 'e') {
         engine.setTool('eraser');
+      } else if (e.key.toLowerCase() === 'm') {
+        engine.setTool('select');
       } else if (e.key.toLowerCase() === 'l') {
         engine.setTool('line');
       } else if (e.key.toLowerCase() === 'r') {
         engine.setTool('rectangle');
+      } else if (e.key.toLowerCase() === 'o') {
+        engine.setTool('circle');
       } else if (e.key.toLowerCase() === 'c') {
         engine.setTool('isocube');
+      } else if (e.key.toLowerCase() === 'y') {
+        engine.setTool('isocylinder');
+      } else if (e.key.toLowerCase() === 'p') {
+        engine.setTool('isoramp');
       } else if (e.key.toLowerCase() === 'g') {
         engine.setTool('bucket');
       } else if (e.key.toLowerCase() === 'i') {
@@ -71,11 +102,15 @@ export const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100">
       <TopBar engine={engine} />
+      <BrushSettingsBar engine={engine} />
 
       <div className="flex flex-1 overflow-hidden relative">
         <ToolBar engine={engine} />
-        <main className="flex-1 relative overflow-hidden">
-          <ViewportCanvas engine={engine} />
+        <main className="flex-1 relative overflow-hidden flex flex-col">
+          <div className="flex-1 relative overflow-hidden">
+            <ViewportCanvas engine={engine} />
+          </div>
+          <Timeline engine={engine} />
         </main>
         <RightSidebar engine={engine} />
       </div>

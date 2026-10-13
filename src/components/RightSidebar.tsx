@@ -1,41 +1,91 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers 
+  Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { PRESET_PALETTES } from '../core/palettes';
+import type { Palette } from '../core/types';
+import { PaletteModal } from './PaletteModal';
 
 interface RightSidebarProps {
   engine: EditorEngine;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
+  const [customPalettes, setCustomPalettes] = useState<Palette[]>(() => {
+    try {
+      const saved = localStorage.getItem('garden_custom_palettes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const [selectedPaletteId, setSelectedPaletteId] = useState<string>('pico-8');
+  const [isPaletteModalOpen, setIsPaletteModalOpen] = useState<boolean>(false);
 
-  const currentPalette = PRESET_PALETTES.find(p => p.id === selectedPaletteId) || PRESET_PALETTES[0];
+  useEffect(() => {
+    try {
+      localStorage.setItem('garden_custom_palettes', JSON.stringify(customPalettes));
+    } catch {
+      // localStorage may fail in restricted contexts
+    }
+  }, [customPalettes]);
+
+  const allPalettes = [...PRESET_PALETTES, ...customPalettes];
+  const currentPalette = allPalettes.find(p => p.id === selectedPaletteId) || allPalettes[0];
+
+  const handlePaletteImported = (newPal: Palette) => {
+    setCustomPalettes(prev => [newPal, ...prev]);
+    setSelectedPaletteId(newPal.id);
+    if (newPal.colors.length > 0) {
+      engine.setColor(newPal.colors[0]);
+    }
+  };
 
   return (
-    <aside className="w-64 bg-zinc-900 border-l border-zinc-800 flex flex-col h-full select-none shrink-0 overflow-y-auto">
-      {/* 1. Color Picker & Palette Section */}
-      <div className="p-3 border-b border-zinc-800">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-            <PaletteIcon className="w-3.5 h-3.5 text-cyan-400" />
-            Paleta de Cores
-          </span>
+    <>
+      <aside className="w-64 bg-zinc-900 border-l border-zinc-800 flex flex-col h-full select-none shrink-0 overflow-y-auto">
+        {/* 1. Color Picker & Palette Section */}
+        <div className="p-3 border-b border-zinc-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+              <PaletteIcon className="w-3.5 h-3.5 text-cyan-400" />
+              Paleta
+            </span>
 
-          <select
-            value={selectedPaletteId}
-            onChange={(e) => setSelectedPaletteId(e.target.value)}
-            className="bg-zinc-950 text-zinc-300 text-xs border border-zinc-800 rounded px-1.5 py-0.5 outline-none focus:border-cyan-500"
-          >
-            {PRESET_PALETTES.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div className="flex items-center gap-1">
+              <select
+                value={selectedPaletteId}
+                onChange={(e) => setSelectedPaletteId(e.target.value)}
+                className="bg-zinc-950 text-zinc-300 text-xs border border-zinc-800 rounded px-1.5 py-0.5 outline-none focus:border-cyan-500 max-w-28 truncate"
+              >
+                <optgroup label="Embutidas">
+                  {PRESET_PALETTES.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </optgroup>
+                {customPalettes.length > 0 && (
+                  <optgroup label="Personalizadas">
+                    {customPalettes.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+
+              <button
+                onClick={() => setIsPaletteModalOpen(true)}
+                className="p-1 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded transition-colors"
+                title="Importar ou Exportar Paleta (.hex, .gpl, imagem)"
+              >
+                <Upload className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
 
         {/* Current Color Indicator */}
         <div className="flex items-center gap-2 mb-3 bg-zinc-950 p-2 rounded-lg border border-zinc-800/80">
@@ -189,5 +239,13 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
         )}
       </div>
     </aside>
-  );
+
+    <PaletteModal
+      isOpen={isPaletteModalOpen}
+      onClose={() => setIsPaletteModalOpen(false)}
+      currentPalette={currentPalette}
+      onPaletteImported={handlePaletteImported}
+    />
+  </>
+);
 };

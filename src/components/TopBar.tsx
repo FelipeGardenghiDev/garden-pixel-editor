@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
+import { NormalMapModal } from './NormalMapModal';
+import { SpritesheetModal } from './SpritesheetModal';
+import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave } from '../core/project-file';
 
 interface TopBarProps {
   engine: EditorEngine;
@@ -12,14 +15,36 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [isNormalMapModalOpen, setIsNormalMapModalOpen] = useState<boolean>(false);
+  const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = (scale: number) => {
     exportDocumentToPng(engine.document, scale, `garden_pixel_${engine.projectionMode}_${scale}x.png`);
     setShowExportMenu(false);
   };
 
+  const handleSaveProject = () => {
+    downloadProjectFile(engine, `projeto_${engine.projectionMode}.garden`);
+  };
+
+  const handleOpenFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      openProjectFromFile(engine, file);
+      e.target.value = '';
+    }
+  };
+
+  const handleRestore = () => {
+    if (confirm('Restaurar última sessão salva automaticamente?')) {
+      restoreAutosave(engine);
+    }
+  };
+
   return (
-    <header className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 select-none shrink-0 z-10">
+    <>
+      <header className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 select-none shrink-0 z-10">
       {/* Brand & Project Info */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
@@ -37,6 +62,47 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
               {engine.document.width} × {engine.document.height}px
             </p>
           </div>
+        </div>
+
+        <div className="h-6 w-px bg-zinc-800 mx-1" />
+
+        {/* Project Save / Load actions */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={handleSaveProject}
+            className="p-1.5 px-2 bg-zinc-950 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-zinc-800 flex items-center gap-1.5 text-xs transition-colors"
+            title="Salvar Projeto (.garden) - Ctrl+S"
+          >
+            <Save className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden md:inline font-medium">Salvar</span>
+          </button>
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="p-1.5 px-2 bg-zinc-950 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-zinc-800 flex items-center gap-1.5 text-xs transition-colors"
+            title="Abrir Projeto (.garden) - Ctrl+O"
+          >
+            <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden md:inline font-medium">Abrir</span>
+          </button>
+
+          {hasAutosave() && (
+            <button
+              onClick={handleRestore}
+              className="p-1.5 bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-cyan-300 rounded-lg border border-zinc-800 transition-colors"
+              title="Restaurar Autosave anterior"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".garden,.json"
+            onChange={handleOpenFileChange}
+            className="hidden"
+          />
         </div>
 
         <div className="h-6 w-px bg-zinc-800 mx-1" />
@@ -151,34 +217,69 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
         </button>
       </div>
 
-      {/* Right: Export Menu */}
-      <div className="relative flex items-center gap-2">
+      {/* Right: Tools & Export Menu */}
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => setShowExportMenu(!showExportMenu)}
-          className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition-all"
+          onClick={() => setIsNormalMapModalOpen(true)}
+          className="flex items-center gap-1.5 bg-amber-950/40 hover:bg-amber-900/50 text-amber-300 border border-amber-800/60 font-medium text-xs px-2.5 py-1.5 rounded-lg transition-all"
+          title="Gerar Normal Map e prévia de iluminação dinâmica 2.5D"
         >
-          <Download className="w-3.5 h-3.5" />
-          Exportar PNG
+          <Sun className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden sm:inline">Luz 2.5D</span>
         </button>
 
-        {showExportMenu && (
-          <div className="absolute right-0 top-10 w-44 bg-zinc-900 border border-zinc-700/80 rounded-lg shadow-2xl p-1 z-50 flex flex-col gap-1">
-            <span className="text-[10px] uppercase font-bold text-zinc-400 px-2 py-1">
-              Escala de Exportação
-            </span>
-            {[1, 2, 4, 8, 16].map((scale) => (
-              <button
-                key={scale}
-                onClick={() => handleExport(scale)}
-                className="text-left px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded font-mono flex items-center justify-between transition-colors"
-              >
-                <span>{scale}x ({engine.document.width * scale}×{engine.document.height * scale}px)</span>
-                {scale === 4 && <span className="text-[10px] text-cyan-400 font-sans">Ideal</span>}
-              </button>
-            ))}
-          </div>
-        )}
+        <button
+          onClick={() => setIsSpritesheetModalOpen(true)}
+          className="flex items-center gap-1.5 bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-800/60 font-medium text-xs px-2.5 py-1.5 rounded-lg transition-all"
+          title="Exportar Spritesheet e Atlas JSON"
+        >
+          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden sm:inline">Atlas</span>
+        </button>
+
+        <div className="h-5 w-px bg-zinc-800 mx-0.5" />
+
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs px-3.5 py-1.5 rounded-lg shadow-sm transition-all"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Exportar PNG
+          </button>
+
+          {showExportMenu && (
+            <div className="absolute right-0 top-10 w-44 bg-zinc-900 border border-zinc-700/80 rounded-lg shadow-2xl p-1 z-50 flex flex-col gap-1">
+              <span className="text-[10px] uppercase font-bold text-zinc-400 px-2 py-1">
+                Escala de Exportação
+              </span>
+              {[1, 2, 4, 8, 16].map((scale) => (
+                <button
+                  key={scale}
+                  onClick={() => handleExport(scale)}
+                  className="text-left px-2.5 py-1.5 text-xs text-zinc-200 hover:bg-zinc-800 rounded font-mono flex items-center justify-between transition-colors"
+                >
+                  <span>{scale}x ({engine.document.width * scale}×{engine.document.height * scale}px)</span>
+                  {scale === 4 && <span className="text-[10px] text-cyan-400 font-sans">Ideal</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </header>
-  );
+
+    <NormalMapModal
+      isOpen={isNormalMapModalOpen}
+      onClose={() => setIsNormalMapModalOpen(false)}
+      engine={engine}
+    />
+
+    <SpritesheetModal
+      isOpen={isSpritesheetModalOpen}
+      onClose={() => setIsSpritesheetModalOpen(false)}
+      engine={engine}
+    />
+  </>
+);
 };

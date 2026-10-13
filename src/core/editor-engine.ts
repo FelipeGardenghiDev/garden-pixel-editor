@@ -1,11 +1,16 @@
-import type { ToolType, ProjectionMode, Point, Rect, Layer } from './types';
+import type { ToolType, ProjectionMode, Point, Rect, Layer, DitherMode } from './types';
 import { PixelDocument } from './document';
 import { Viewport } from './viewport';
 import { HistoryManager, DrawRectCommand } from './history';
 import { PixelBuffer } from './pixel-buffer';
 import { hexToUint32, uint32ToHex } from './color';
-import { bresenhamLine, drawRectOutline, floodFill, drawIsoCube, deriveIsoShades } from './algorithms';
+import { 
+  bresenhamLine, drawRectOutline, floodFill, drawIsoCube, deriveIsoShades,
+  drawEllipseOutline, drawIsoCylinder, drawIsoRamp, isDitherPixel 
+} from './algorithms';
 import { snapToIsometricAxis, snapToOrthoAxis, wrapCoordinate } from './constraints';
+import { swapColor, getPaletteShade } from './shading';
+import { saveAutosave } from './project-file';
 
 export class EditorEngine {
   public document: PixelDocument;
@@ -23,6 +28,17 @@ export class EditorEngine {
   public showIsoGrid: boolean = true;
   public isoStepSize: number = 4; // grid spacing for isometric guides
 
+  // Brush and Dithering settings
+  public brushSize: number = 1; // 1 to 4
+  public pixelPerfect: boolean = false;
+  public ditherMode: DitherMode = 'none';
+
+  // Animation & Timeline state
+  public fps: number = 8;
+  public isPlaying: boolean = false;
+  public onionSkinning: boolean = false;
+  private animTimer: number | null = null;
+
   // Active stroke / tool preview state
   public isDrawing: boolean = false;
   public isPanning: boolean = false;
@@ -30,6 +46,13 @@ export class EditorEngine {
   private lastStrokePixel: Point = { x: 0, y: 0 };
   public currentHoverPixel: Point | null = null;
   public previewBuffer: PixelBuffer; // Temporary overlay buffer for previewing lines/boxes
+
+  // Selection & Transformation state
+  public selectionRect: Rect | null = null;
+  public floatingSelection: { buffer: PixelBuffer; rect: Rect; originalLayerId: string } | null = null;
+  private isMovingSelection: boolean = false;
+  private moveDragStart: Point = { x: 0, y: 0 };
+  private initialFloatingPos: Point = { x: 0, y: 0 };
 
   // Tracking modified pixels during stroke for clean undo dirty rects
   private modifiedPixelsMap: Map<number, number> = new Map(); // index -> oldColor
@@ -69,6 +92,9 @@ export class EditorEngine {
   }
 
   public setTool(tool: ToolType): void {
+    if (this.currentTool === 'select' && tool !== 'select') {
+      this.commitFloatingSelection();
+    }
     this.currentTool = tool;
     this.previewBuffer.clear();
     this.notifyState();
@@ -96,6 +122,313 @@ export class EditorEngine {
     this.notifyState();
   }
 
+  // --- Animation & Timeline Controls ---
+
+  public play(): void {
+    if (this.isPlaying) return;
+    this.isPlaying = true;
+    let lastTime = performance.now();
+
+    const tick = (now: number) => {
+      if (!this.isPlaying) return;
+      const interval = 1000 / this.fps;
+      if (now - lastTime >= interval) {
+        lastTime = now;
+        this.nextFrame();
+      }
+      this.animTimer = requestAnimationFrame(tick);
+    };
+
+    this.animTimer = requestAnimationFrame(tick);
+    this.notifyState();
+  }
+
+  public pause(): void {
+    this.isPlaying = false;
+    if (this.animTimer !== null) {
+      cancelAnimationFrame(this.animTimer);
+      this.animTimer = null;
+    }
+    this.notifyState();
+  }
+
+  public togglePlay(): void {
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      this.play();
+    }
+  }
+
+  public setFps(fps: number): void {
+    this.fps = Math.max(1, Math.min(30, fps));
+    this.notifyState();
+  }
+
+  public toggleOnionSkinning(): void {
+    this.onionSkinning = !this.onionSkinning;
+    this.notifyState();
+  }
+
+  public addFrame(copyPrevious: boolean = false): void {
+    this.document.addFrame(copyPrevious);
+    this.notifyState();
+  }
+
+  public duplicateFrame(): void {
+    this.document.duplicateFrame();
+    this.notifyState();
+  }
+
+  public deleteFrame(): void {
+    this.document.deleteFrame();
+    this.notifyState();
+  }
+
+  public setFrame(index: number): void {
+    this.document.setActiveFrame(index);
+    this.notifyState();
+  }
+
+  public nextFrame(): void {
+    const nextIdx = (this.document.activeFrameIndex + 1) % this.document.frames.length;
+    this.document.setActiveFrame(nextIdx);
+    this.notifyState();
+  }
+
+  public prevFrame(): void {
+    const prevIdx = (this.document.activeFrameIndex - 1 + this.document.frames.length) % this.document.frames.length;
+    this.document.setActiveFrame(prevIdx);
+    this.notifyState();
+  }
+
+  // --- Brush & Shading Settings ---
+
+  public setBrushSize(size: number): void {
+    this.brushSize = Math.max(1, Math.min(4, size));
+    this.notifyState();
+  }
+
+  public togglePixelPerfect(): void {
+    this.pixelPerfect = !this.pixelPerfect;
+    this.notifyState();
+  }
+
+  public setDitherMode(mode: DitherMode): void {
+    this.ditherMode = mode;
+    this.notifyState();
+  }
+
+  public swapColor(fromHex: string, toHex: string): void {
+    const activeLayer = this.document.getActiveLayer();
+    if (!activeLayer) return;
+    const from32 = hexToUint32(fromHex);
+    const to32 = hexToUint32(toHex);
+    const layerBuf = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer, true);
+    const dirty = swapColor(layerBuf, from32, to32, this.selectionRect || undefined);
+    if (dirty) {
+      const oldPixels = new Uint32Array(dirty.width * dirty.height);
+      const newPixels = layerBuf.extractRect(dirty);
+      for (let i = 0; i < newPixels.length; i++) {
+        oldPixels[i] = newPixels[i] === to32 ? from32 : newPixels[i];
+      }
+      this.history.push(new DrawRectCommand(
+        'Substituir Cor',
+        layerBuf,
+        dirty,
+        oldPixels,
+        newPixels,
+        () => this.document.notify()
+      ));
+      this.document.notify();
+    }
+  }
+
+  public shadeActiveColor(direction: 'darker' | 'lighter'): void {
+    const newHex = getPaletteShade(this.primaryColor, this.document.activePalette.colors, direction);
+    this.setColor(newHex);
+  }
+
+  // --- Selection & Transformation Actions ---
+
+  public commitFloatingSelection(): void {
+    if (!this.floatingSelection) return;
+
+    const layer = this.document.layers.find(l => l.id === this.floatingSelection!.originalLayerId) || this.document.getActiveLayer();
+    if (layer) {
+      const layerBuffer = new PixelBuffer(this.document.width, this.document.height, layer.buffer, true);
+      const stampRect: Rect = {
+        x: Math.max(0, this.floatingSelection.rect.x),
+        y: Math.max(0, this.floatingSelection.rect.y),
+        width: Math.min(this.document.width - Math.max(0, this.floatingSelection.rect.x), this.floatingSelection.rect.width),
+        height: Math.min(this.document.height - Math.max(0, this.floatingSelection.rect.y), this.floatingSelection.rect.height)
+      };
+
+      if (stampRect.width > 0 && stampRect.height > 0) {
+        const oldPixels = layerBuffer.extractRect(stampRect);
+        layerBuffer.blitBuffer(this.floatingSelection.rect.x, this.floatingSelection.rect.y, this.floatingSelection.buffer, true);
+        const newPixels = layerBuffer.extractRect(stampRect);
+
+        this.history.push(new DrawRectCommand(
+          'Mover Seleção',
+          layerBuffer,
+          stampRect,
+          oldPixels,
+          newPixels,
+          () => this.document.notify()
+        ));
+      }
+    }
+
+    this.floatingSelection = null;
+    this.document.notify();
+  }
+
+  public liftSelection(): void {
+    if (!this.selectionRect || this.floatingSelection) return;
+    const activeLayer = this.document.getActiveLayer();
+    if (!activeLayer) return;
+
+    const layerBuffer = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer, true);
+    const extracted = layerBuffer.extractBuffer(this.selectionRect);
+
+    const oldPixels = layerBuffer.extractRect(this.selectionRect);
+    layerBuffer.clearRect(this.selectionRect);
+    const newPixels = layerBuffer.extractRect(this.selectionRect);
+
+    this.history.push(new DrawRectCommand(
+      'Recortar Seleção',
+      layerBuffer,
+      this.selectionRect,
+      oldPixels,
+      newPixels,
+      () => this.document.notify()
+    ));
+
+    this.floatingSelection = {
+      buffer: extracted,
+      rect: { ...this.selectionRect },
+      originalLayerId: activeLayer.id
+    };
+    this.document.notify();
+  }
+
+  public clearSelection(): void {
+    this.commitFloatingSelection();
+    this.selectionRect = null;
+    this.notifyState();
+  }
+
+  public deleteSelection(): void {
+    if (this.floatingSelection) {
+      this.floatingSelection = null;
+      this.selectionRect = null;
+      this.document.notify();
+      return;
+    }
+
+    if (this.selectionRect) {
+      const activeLayer = this.document.getActiveLayer();
+      if (activeLayer) {
+        const layerBuffer = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer, true);
+        const oldPixels = layerBuffer.extractRect(this.selectionRect);
+        layerBuffer.clearRect(this.selectionRect);
+        const newPixels = layerBuffer.extractRect(this.selectionRect);
+
+        this.history.push(new DrawRectCommand(
+          'Deletar Seleção',
+          layerBuffer,
+          this.selectionRect,
+          oldPixels,
+          newPixels,
+          () => this.document.notify()
+        ));
+      }
+      this.selectionRect = null;
+      this.document.notify();
+    }
+  }
+
+  public selectAll(): void {
+    this.commitFloatingSelection();
+    this.selectionRect = { x: 0, y: 0, width: this.document.width, height: this.document.height };
+    this.notifyState();
+  }
+
+  public flipHorizontal(): void {
+    if (this.floatingSelection) {
+      this.floatingSelection.buffer.flipHorizontal();
+      this.notifyState();
+      return;
+    }
+
+    if (this.selectionRect) {
+      this.liftSelection();
+      const fs = this.floatingSelection as { buffer: PixelBuffer; rect: Rect; originalLayerId: string } | null;
+      if (fs) {
+        fs.buffer.flipHorizontal();
+      }
+      this.notifyState();
+      return;
+    }
+
+    // Flip whole active layer
+    const activeLayer = this.document.getActiveLayer();
+    if (!activeLayer) return;
+    const layerBuffer = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer, true);
+    const fullRect: Rect = { x: 0, y: 0, width: this.document.width, height: this.document.height };
+    const oldPixels = layerBuffer.extractRect(fullRect);
+    layerBuffer.flipHorizontal();
+    const newPixels = layerBuffer.extractRect(fullRect);
+
+    this.history.push(new DrawRectCommand(
+      'Inverter Horizontal',
+      layerBuffer,
+      fullRect,
+      oldPixels,
+      newPixels,
+      () => this.document.notify()
+    ));
+    this.document.notify();
+  }
+
+  public flipVertical(): void {
+    if (this.floatingSelection) {
+      this.floatingSelection.buffer.flipVertical();
+      this.notifyState();
+      return;
+    }
+
+    if (this.selectionRect) {
+      this.liftSelection();
+      const fs = this.floatingSelection as { buffer: PixelBuffer; rect: Rect; originalLayerId: string } | null;
+      if (fs) {
+        fs.buffer.flipVertical();
+      }
+      this.notifyState();
+      return;
+    }
+
+    // Flip whole active layer
+    const activeLayer = this.document.getActiveLayer();
+    if (!activeLayer) return;
+    const layerBuffer = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer, true);
+    const fullRect: Rect = { x: 0, y: 0, width: this.document.width, height: this.document.height };
+    const oldPixels = layerBuffer.extractRect(fullRect);
+    layerBuffer.flipVertical();
+    const newPixels = layerBuffer.extractRect(fullRect);
+
+    this.history.push(new DrawRectCommand(
+      'Inverter Vertical',
+      layerBuffer,
+      fullRect,
+      oldPixels,
+      newPixels,
+      () => this.document.notify()
+    ));
+    this.document.notify();
+  }
+
   /**
    * Resets active stroke tracking
    */
@@ -108,29 +441,48 @@ export class EditorEngine {
   }
 
   /**
-   * Sets pixel on active layer and records old state for dirty rect
+   * Sets pixel on active layer and records old state for dirty rect, supporting brushSize and dithering.
    */
-  private paintPixel(layer: Layer, x: number, y: number, color32: number): void {
-    if (this.projectionMode === 'wrap') {
-      x = wrapCoordinate(x, this.document.width);
-      y = wrapCoordinate(y, this.document.height);
-    } else {
-      if (x < 0 || x >= this.document.width || y < 0 || y >= this.document.height) return;
+  private paintPixel(layer: Layer, x: number, y: number, color32: number, checkDither: boolean = true): void {
+    const size = this.currentTool === 'eraser' 
+      ? Math.max(1, this.brushSize) 
+      : (this.currentTool === 'pencil' || this.currentTool === 'dither' ? this.brushSize : 1);
+    
+    const dither = this.currentTool === 'dither' 
+      ? (this.ditherMode === 'none' ? 'checker' : this.ditherMode) 
+      : this.ditherMode;
+
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) {
+        let px = x + dx;
+        let py = y + dy;
+
+        if (checkDither && dither !== 'none' && this.currentTool !== 'eraser') {
+          if (!isDitherPixel(px, py, dither)) continue;
+        }
+
+        if (this.projectionMode === 'wrap') {
+          px = wrapCoordinate(px, this.document.width);
+          py = wrapCoordinate(py, this.document.height);
+        } else {
+          if (px < 0 || px >= this.document.width || py < 0 || py >= this.document.height) continue;
+        }
+
+        const idx = py * this.document.width + px;
+        const oldVal = layer.buffer[idx];
+        if (oldVal === color32) continue;
+
+        if (!this.modifiedPixelsMap.has(idx)) {
+          this.modifiedPixelsMap.set(idx, oldVal);
+        }
+        layer.buffer[idx] = color32;
+
+        this.dirtyMinX = Math.min(this.dirtyMinX, px);
+        this.dirtyMaxX = Math.max(this.dirtyMaxX, px);
+        this.dirtyMinY = Math.min(this.dirtyMinY, py);
+        this.dirtyMaxY = Math.max(this.dirtyMaxY, py);
+      }
     }
-
-    const idx = y * this.document.width + x;
-    const oldVal = layer.buffer[idx];
-    if (oldVal === color32) return;
-
-    if (!this.modifiedPixelsMap.has(idx)) {
-      this.modifiedPixelsMap.set(idx, oldVal);
-    }
-    layer.buffer[idx] = color32;
-
-    this.dirtyMinX = Math.min(this.dirtyMinX, x);
-    this.dirtyMaxX = Math.max(this.dirtyMaxX, x);
-    this.dirtyMinY = Math.min(this.dirtyMinY, y);
-    this.dirtyMaxY = Math.max(this.dirtyMaxY, y);
   }
 
   /**
@@ -146,7 +498,7 @@ export class EditorEngine {
       height: this.dirtyMaxY - this.dirtyMinY + 1
     };
 
-    const layerBuffer = new PixelBuffer(this.document.width, this.document.height, layer.buffer);
+    const layerBuffer = new PixelBuffer(this.document.width, this.document.height, layer.buffer, true);
     const newPixels = layerBuffer.extractRect(rect);
 
     // Build oldPixels snapshot
@@ -164,9 +516,10 @@ export class EditorEngine {
       }
     }
 
-    const command = new DrawRectCommand(description, layerBuffer, rect, oldPixels, newPixels);
+    const command = new DrawRectCommand(description, layerBuffer, rect, oldPixels, newPixels, () => this.document.notify());
     this.history.push(command);
     this.document.notify();
+    saveAutosave(this);
   }
 
   // --- Interaction Handlers ---
@@ -187,6 +540,26 @@ export class EditorEngine {
 
     const activeLayer = this.document.getActiveLayer();
     if (!activeLayer || !activeLayer.visible) return;
+
+    if (this.currentTool === 'select') {
+      if (this.selectionRect &&
+          p.x >= this.selectionRect.x && p.x < this.selectionRect.x + this.selectionRect.width &&
+          p.y >= this.selectionRect.y && p.y < this.selectionRect.y + this.selectionRect.height) {
+        if (!this.floatingSelection) {
+          this.liftSelection();
+        }
+        this.isMovingSelection = true;
+        this.moveDragStart = p;
+        this.initialFloatingPos = { x: this.selectionRect.x, y: this.selectionRect.y };
+      } else {
+        this.commitFloatingSelection();
+        this.isDrawing = true;
+        this.strokeStartPixel = p;
+        this.selectionRect = { x: p.x, y: p.y, width: 1, height: 1 };
+        this.notifyState();
+      }
+      return;
+    }
 
     if (this.currentTool === 'picker') {
       const composite = this.document.composite();
@@ -218,7 +591,7 @@ export class EditorEngine {
       return;
     }
 
-    if (this.currentTool === 'pencil' || this.currentTool === 'eraser') {
+    if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
       this.startStrokeTracking();
       const color = this.currentTool === 'eraser' ? 0 : this.primaryColor32;
       this.paintPixel(activeLayer, p.x, p.y, color);
@@ -235,6 +608,31 @@ export class EditorEngine {
     const p = this.viewport.screenToPixel(e.clientX, e.clientY, containerRect);
     this.currentHoverPixel = p;
 
+    if (this.currentTool === 'select') {
+      if (this.isMovingSelection && this.floatingSelection) {
+        const dx = p.x - this.moveDragStart.x;
+        const dy = p.y - this.moveDragStart.y;
+        this.floatingSelection.rect.x = this.initialFloatingPos.x + dx;
+        this.floatingSelection.rect.y = this.initialFloatingPos.y + dy;
+        this.selectionRect = { ...this.floatingSelection.rect };
+        this.notifyState();
+        return;
+      } else if (this.isDrawing) {
+        const minX = Math.max(0, Math.min(this.strokeStartPixel.x, p.x));
+        const minY = Math.max(0, Math.min(this.strokeStartPixel.y, p.y));
+        const maxX = Math.min(this.document.width - 1, Math.max(this.strokeStartPixel.x, p.x));
+        const maxY = Math.min(this.document.height - 1, Math.max(this.strokeStartPixel.y, p.y));
+        this.selectionRect = {
+          x: minX,
+          y: minY,
+          width: maxX - minX + 1,
+          height: maxY - minY + 1
+        };
+        this.notifyState();
+        return;
+      }
+    }
+
     if (!this.isDrawing) {
       this.notifyState();
       return;
@@ -243,16 +641,14 @@ export class EditorEngine {
     const activeLayer = this.document.getActiveLayer();
     if (!activeLayer || !activeLayer.visible) return;
 
-    if (this.currentTool === 'pencil' || this.currentTool === 'eraser') {
+    if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
       const color = this.currentTool === 'eraser' ? 0 : this.primaryColor32;
-      // Bresenham line between last point and current point to prevent gaps during fast mouse drag
       bresenhamLine(this.lastStrokePixel.x, this.lastStrokePixel.y, p.x, p.y, (x, y) => {
         this.paintPixel(activeLayer, x, y, color);
       });
       this.lastStrokePixel = p;
       this.document.notify();
     } else if (this.currentTool === 'line') {
-      // Preview line with active projection constraint!
       this.previewBuffer.clear();
       let target = p;
       if (this.projectionMode === 'isometric') {
@@ -270,9 +666,14 @@ export class EditorEngine {
         this.previewBuffer.setPixel(x, y, this.primaryColor32);
       });
       this.notifyState();
+    } else if (this.currentTool === 'circle') {
+      this.previewBuffer.clear();
+      drawEllipseOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
+        this.previewBuffer.setPixel(x, y, this.primaryColor32);
+      });
+      this.notifyState();
     } else if (this.currentTool === 'isocube') {
       this.previewBuffer.clear();
-      // Calculate steps based on distance
       const dx = p.x - this.strokeStartPixel.x;
       const dy = p.y - this.strokeStartPixel.y;
       const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
@@ -281,6 +682,31 @@ export class EditorEngine {
       const shades = deriveIsoShades(this.primaryColor32);
 
       drawIsoCube(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
+        this.previewBuffer.setPixel(x, y, col);
+      });
+      this.notifyState();
+    } else if (this.currentTool === 'isocylinder') {
+      this.previewBuffer.clear();
+      const dx = p.x - this.strokeStartPixel.x;
+      const dy = p.y - this.strokeStartPixel.y;
+      const radius = Math.max(2, Math.min(24, Math.abs(dx)));
+      const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
+      const shades = deriveIsoShades(this.primaryColor32);
+
+      drawIsoCylinder(this.strokeStartPixel, radius, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
+        this.previewBuffer.setPixel(x, y, col);
+      });
+      this.notifyState();
+    } else if (this.currentTool === 'isoramp') {
+      this.previewBuffer.clear();
+      const dx = p.x - this.strokeStartPixel.x;
+      const dy = p.y - this.strokeStartPixel.y;
+      const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
+      const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
+      const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
+      const shades = deriveIsoShades(this.primaryColor32);
+
+      drawIsoRamp(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.previewBuffer.setPixel(x, y, col);
       });
       this.notifyState();
@@ -293,6 +719,25 @@ export class EditorEngine {
       return;
     }
 
+    if (this.currentTool === 'select') {
+      if (this.isMovingSelection) {
+        this.isMovingSelection = false;
+        this.notifyState();
+        return;
+      }
+      if (this.isDrawing) {
+        this.isDrawing = false;
+        const p = this.viewport.screenToPixel(e.clientX, e.clientY, containerRect);
+        if (this.selectionRect && this.selectionRect.width <= 1 && this.selectionRect.height <= 1 &&
+            this.strokeStartPixel.x === p.x && this.strokeStartPixel.y === p.y) {
+          this.selectionRect = null;
+        }
+        this.notifyState();
+        return;
+      }
+      return;
+    }
+
     if (!this.isDrawing) return;
     this.isDrawing = false;
 
@@ -301,8 +746,9 @@ export class EditorEngine {
 
     const p = this.viewport.screenToPixel(e.clientX, e.clientY, containerRect);
 
-    if (this.currentTool === 'pencil' || this.currentTool === 'eraser') {
-      this.commitStroke(this.currentTool === 'pencil' ? 'Pincel' : 'Borracha', activeLayer);
+    if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
+      const desc = this.currentTool === 'eraser' ? 'Borracha' : (this.currentTool === 'dither' ? 'Dithering' : 'Pincel');
+      this.commitStroke(desc, activeLayer);
     } else if (this.currentTool === 'line') {
       let target = p;
       if (this.projectionMode === 'isometric') {
@@ -324,6 +770,13 @@ export class EditorEngine {
       });
       this.previewBuffer.clear();
       this.commitStroke('Retângulo', activeLayer);
+    } else if (this.currentTool === 'circle') {
+      this.startStrokeTracking();
+      drawEllipseOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
+        this.paintPixel(activeLayer, x, y, this.primaryColor32);
+      });
+      this.previewBuffer.clear();
+      this.commitStroke('Círculo / Elipse', activeLayer);
     } else if (this.currentTool === 'isocube') {
       this.startStrokeTracking();
       const dx = p.x - this.strokeStartPixel.x;
@@ -338,6 +791,33 @@ export class EditorEngine {
       });
       this.previewBuffer.clear();
       this.commitStroke('Bloco Isométrico', activeLayer);
+    } else if (this.currentTool === 'isocylinder') {
+      this.startStrokeTracking();
+      const dx = p.x - this.strokeStartPixel.x;
+      const dy = p.y - this.strokeStartPixel.y;
+      const radius = Math.max(2, Math.min(24, Math.abs(dx)));
+      const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
+      const shades = deriveIsoShades(this.primaryColor32);
+
+      drawIsoCylinder(this.strokeStartPixel, radius, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
+        this.paintPixel(activeLayer, x, y, col);
+      });
+      this.previewBuffer.clear();
+      this.commitStroke('Cilindro Isométrico', activeLayer);
+    } else if (this.currentTool === 'isoramp') {
+      this.startStrokeTracking();
+      const dx = p.x - this.strokeStartPixel.x;
+      const dy = p.y - this.strokeStartPixel.y;
+      const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
+      const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
+      const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
+      const shades = deriveIsoShades(this.primaryColor32);
+
+      drawIsoRamp(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
+        this.paintPixel(activeLayer, x, y, col);
+      });
+      this.previewBuffer.clear();
+      this.commitStroke('Rampa Isométrica', activeLayer);
     }
 
     this.notifyState();
