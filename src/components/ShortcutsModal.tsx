@@ -28,6 +28,8 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
       { keys: ['D'], description: 'Pincel Dithering (Padrões Checker, Sparse, Bayer)' },
       { keys: ['G'], description: 'Balde de Tinta (Preenchimento Flood Fill)' },
       { keys: ['I'], description: 'Conta-gotas (Capturar cor sob o cursor)' },
+      { keys: ['X'], description: 'Alternar entre cor Primária e Secundária' },
+      { keys: ['Botão Dir.'], description: 'Pintar / desenhar com cor secundária' },
       { keys: ['['], description: 'Degrau de sombra mais escuro da paleta' },
       { keys: [']'], description: 'Degrau de sombra mais claro da paleta' },
     ],
@@ -41,10 +43,13 @@ const SHORTCUT_CATEGORIES: ShortcutCategory[] = [
     ],
   },
   {
-    title: 'Câmera, Viewport & Seleção',
+    title: 'Câmera, Viewport, Gestos Touch & Seleção',
     items: [
       { keys: ['Espaço', 'Arrastar'], description: 'Mover a Câmera (Pan suave)' },
       { keys: ['Scroll'], description: 'Zoom centrado no ponteiro do mouse' },
+      { keys: ['2 Dedos (Arrastar)'], description: 'Pan e Zoom com pinça (Tablets / Celulares)' },
+      { keys: ['2 Dedos (Toque)'], description: 'Desfazer traço (Undo em tablets/mobile)' },
+      { keys: ['3 Dedos (Toque)'], description: 'Refazer traço (Redo em tablets/mobile)' },
       { keys: ['M'], description: 'Seleção Marquee retangular' },
       { keys: ['Ctrl', 'A'], description: 'Selecionar todo o canvas' },
       { keys: ['Esc'], description: 'Desmarcar seleção ativa' },

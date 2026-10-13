@@ -3,7 +3,8 @@ import {
   X, Film, Download, RefreshCw 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
-import { exportGifBlob, downloadAnimatedGif } from '../core/gif-export';
+import { exportGifBlob } from '../core/gif-export';
+import { exportGifAsync } from '../core/gif-worker-client';
 
 interface GifExportModalProps {
   isOpen: boolean;
@@ -22,6 +23,8 @@ export const GifExportModal: React.FC<GifExportModalProps> = ({
   const [backgroundColor, setBackgroundColor] = useState<string>('#18181b');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileSizeBytes, setFileSizeBytes] = useState<number | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [exportProgress, setExportProgress] = useState<{ current: number; total: number } | null>(null);
 
   const docW = engine.document.width;
   const docH = engine.document.height;
@@ -66,16 +69,38 @@ export const GifExportModal: React.FC<GifExportModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleDownload = () => {
-    const filename = `garden_animation_${finalW}x${finalH}_${fps}fps.gif`;
-    downloadAnimatedGif(engine.document, {
-      scale,
-      fps,
-      transparent,
-      backgroundColor: transparent ? undefined : backgroundColor,
-      repeat: 0
-    }, filename);
-    onClose();
+  const handleDownload = async () => {
+    setIsExporting(true);
+    setExportProgress({ current: 0, total: engine.document.frames.length });
+    try {
+      const blob = await exportGifAsync(
+        engine.document,
+        {
+          scale,
+          fps,
+          transparent,
+          backgroundColor: transparent ? undefined : backgroundColor,
+          repeat: 0
+        },
+        (current, total) => setExportProgress({ current, total })
+      );
+
+      const filename = `garden_animation_${finalW}x${finalH}_${fps}fps.gif`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch (err) {
+      console.error('Export error in worker', err);
+    } finally {
+      setIsExporting(false);
+      setExportProgress(null);
+    }
   };
 
   const formattedSize = fileSizeBytes
@@ -240,11 +265,20 @@ export const GifExportModal: React.FC<GifExportModalProps> = ({
             </button>
             <button
               onClick={handleDownload}
-              disabled={!previewUrl}
+              disabled={!previewUrl || isExporting}
               className="px-4 py-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-medium text-xs rounded-xl flex items-center gap-1.5 shadow-md shadow-purple-950/60 transition-all"
             >
-              <Download className="w-3.5 h-3.5" />
-              Baixar GIF ({finalW}×{finalH}px)
+              {isExporting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-200" />
+                  <span>Processando Worker ({exportProgress?.current}/{exportProgress?.total})...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Baixar GIF ({finalW}×{finalH}px)</span>
+                </>
+              )}
             </button>
           </div>
         </div>

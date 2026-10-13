@@ -1,34 +1,44 @@
 # 🌿 Garden Pixel Editor
 
-> **Editor web moderno e especializado em Pixel Art**, com suporte nativo a **projeções por estilo** (Isométrico 2:1, Tileset Seamless Wrap e 2D Ortográfico clássico).
+> **Editor web profissional de Pixel Art & Isometria 2:1 para Games**, com motor gráfico raster dedicado em `Uint32Array`, iluminação 2.5D dinâmica via Normal Maps, suporte a PWA 100% Offline, exportação multithread em Web Workers e projeções canônicas de jogos.
 
 [![CI & Deployment](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Vitest-54%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-64%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![PWA](https://img.shields.io/badge/PWA-Installable%20%26%20Offline-blueviolet?logo=pwa&logoColor=white)](https://web.dev/progressive-web-apps/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-4.0-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![Oxlint](https://img.shields.io/badge/Oxlint-0%20warnings-success)](https://oxc.rs/)
 
-> 🌐 **Live Demo:** [https://felipegardenghidev.github.io/garden-pixel-editor/](https://felipegardenghidev.github.io/garden-pixel-editor/)
+> 🌐 **Live Demo (Produção):** [https://felipegardenghidev.github.io/garden-pixel-editor/](https://felipegardenghidev.github.io/garden-pixel-editor/)
 
 ---
 
 ## 🎯 Por que o Garden Pixel Editor?
 
-A maioria dos editores tradicionais (como Aseprite e Piskel) foi desenhada como telas 2D ortográficas planas. Quando artistas precisam criar **arte isométrica** ou **tilesets contínuos**, o processo se torna manual e frustrante: é necessário contar pixels para manter o ângulo 2:1, evitar *jaggies* (degraus irregulares) e testar repetições em ferramentas externas.
+Softwares de pixel art convencionais (como Aseprite e Piskel) foram concebidos sob telas bidimensionais ortogonais planas. Quando um artista ou desenvolvedor de jogos precisa criar **arte isométrica (tilesets de chão, paredes, prédios e personagens)**, o processo exige contagem manual de pixels para evitar *jaggies* (degraus irregulares), além de testes manuais em game engines externas para verificar alinhamento e repetição.
 
-O **Garden Pixel Editor** resolve isso tornando os **estilos de projeção cidadãos de primeira classe**: as ferramentas e o pincel adaptam seu comportamento matemático dependendo do modo ativo.
+O **Garden Pixel Editor** transforma a **isometria e o design de tilesets em recursos centrais de primeira classe**:
+* **Motor Raster Otimizado:** Operações pixel a pixel diretamente em buffers `Uint32Array` (Little-Endian 32-bit), com renderização desacoplada de frameworks.
+* **Projeção Isométrica 2:1 Nativa:** Trava matemática nos eixos canônicos de jogos ($\pm 26.565^\circ$, $\Delta x = \pm 2, \Delta y = 1$ e vertical $90^\circ$).
+* **Primitivas Volumétricas 3D:** Geração em 1 clique de Cubos/Blocos (`C`), Cilindros (`Y`) e Rampas/Telhados (`P`) com iluminação e sombreamento automático de faces.
+* **Repetição Isométrica (Floor Map Tiling):** Visualização em tempo real de como o tile se repete como chão contínuo em grade diamante 2:1 (3×3, 5×5 ou 7×7) com exportação direta de mapa montado.
+* **Iluminação Dinâmica 2.5D & Normal Maps:** Geração automática de mapa de normais (Sobel + Bevel) com ponto de luz 3D interativo controlado pelo mouse.
+* **Multithreading com Web Workers:** Codificação de GIFs animados pesados e quantização de paletas em segundo plano sem congelar a interface.
+* **PWA & Offline Completo:** Instalável como aplicativo nativo no Windows, macOS, iPadOS e Android, com funcionamento 100% offline via Service Worker.
 
 ---
 
 ## 📐 Modos de Estilo & Projeção
 
-### 1. 🔷 Modo Isométrico 2:1 (Dimétrico canônico de jogos)
-* **Trava Angular 2:1 Nativa:** A ferramenta de Linha (`L`) trava automaticamente nos eixos de **$\pm 26.565^\circ$ ($\Delta x = \pm 2, \Delta y = 1$)** e vertical **$90^\circ$**, garantindo traços perfeitamente limpos e sem pixels desalinhados.
-* **Ferramenta de Bloco 3D (`C`):** Permite clicar e arrastar para gerar prismas isométricos volumétricos completos com **faces superior, esquerda e direita sombreadas dinamicamente** a partir da cor escolhida.
-* **Grade Isométrica em Diamante:** Guia visual calculada diretamente em espaço de canvas.
-* **Coordenadas Isométricas $(U, V)$:** Exibição da posição na projeção isométrica em tempo real na barra de status.
+### 1. 🔷 Modo Isométrico 2:1 (Dimétrico canônico de RPGs e RTS)
+* **Trava Angular 2:1 Automática:** A ferramenta de Linha (`L`) trava com precisão sub-pixel nos eixos isométricos, impedindo traços tortos ou jaggies.
+* **Primitivas 3D Paramétricas:**
+  * **Bloco 3D (`C`):** Extrusão isométrica com auto-sombreamento das faces topo, esquerda e direita.
+  * **Cilindro 3D (`Y`):** Elipse isométrica 2:1 no topo com corpo sombreado.
+  * **Rampa 3D (`P`):** Telhado e declive no ângulo canônico de inclinação.
+* **Repetição Isométrica (Floor Tiling):** Modo dedicado para conferir se pedras, grama, água e pisos se encaixam perfeitamente na malha diamante de um mapa de jogo.
 
 ### 2. 🔁 Modo Tileset Seamless (Wrap-around Contínuo)
 * **Canvas Toroidal:** Pinceladas que ultrapassam qualquer borda dobram instantaneamente para a borda oposta ($X \pmod W, Y \pmod H$).
@@ -41,29 +51,38 @@ O **Garden Pixel Editor** resolve isso tornando os **estilos de projeção cidad
 
 ## 🏛️ Arquitetura do Software
 
-O projeto segue uma arquitetura desacoplada e modular:
+O projeto segue padrões de engenharia de software de nível sênior (Clean Architecture, desacoplamento total do motor e multithreading via Web Workers):
 
 ```mermaid
 flowchart TD
-    subgraph UI ["Camada de Interface (React + Tailwind)"]
-        TopBar["TopBar (Modos, Zoom, Export)"]
-        ToolBar["ToolBar (Ferramentas & Atalhos)"]
-        RightSidebar["RightSidebar (Paletas, Camadas, Info)"]
-        StatusBar["StatusBar (Coordenadas X/Y e U/V)"]
+    subgraph UI ["Camada de Interface (React 19 + Tailwind v4)"]
+        TopBar["TopBar (Modos, Zoom, Exportações)"]
+        ToolBar["ToolBar (Pincel, Borracha, Primitivas 3D)"]
+        RightSidebar["RightSidebar (Amostras Duplas, Camadas, Paleta)"]
+        FloatingPreview["Mini-Preview 1:1 Flutuante"]
+        Timeline["Timeline (Frames, FPS, Onion Skinning)"]
+        StatusBar["StatusBar (Coordenadas X/Y e Isométricas U/V)"]
     end
 
-    subgraph Core ["Motor Core (TypeScript Puro / Framework-Agnostic)"]
-        Engine["EditorEngine (Orquestrador)"]
-        Doc["PixelDocument (Camadas & Composição)"]
+    subgraph Core ["Motor Core (TypeScript Puro / Agnóstico de Framework)"]
+        Engine["EditorEngine (Orquestrador de Estado)"]
+        Doc["PixelDocument (Camadas & Frames de Animação)"]
         Buffer["PixelBuffer (Uint32Array 32-bit Little-Endian)"]
         History["HistoryManager (Command Pattern com Dirty Rects)"]
         Constraints["ConstraintPipeline (Iso 2:1 Snap & Toroidal Wrap)"]
-        Algo["Algorithms (Bresenham, FloodFill, IsoCube)"]
-        Camera["Viewport (Pan & Zoom centrado no Cursor)"]
+        Algo["Algorithms (Bresenham, FloodFill, IsoCube, IsoCylinder, Dithering)"]
+        Camera["Viewport (Pan & Zoom centrado no Cursor / Toque)"]
+        NormalMap["NormalMapGenerator (Gradientes Sobel + Bevel)"]
     end
 
-    subgraph Renderer ["Pipeline Gráfico"]
-        ViewportCanvas["ViewportCanvas (Multi-camada com Offscreen Canvas)"]
+    subgraph Workers ["Segundo Plano (Web Workers Multithreading)"]
+        GifWorker["gif-export.worker.ts (Quantização & GIFEncoder off-thread)"]
+    end
+
+    subgraph Storage ["Persistência & PWA"]
+        ServiceWorker["Service Worker (Workbox precache offline)"]
+        LocalStorage["LocalStorage (Autosave à prova de falhas)"]
+        ProjectFile[".garden JSON (Camadas em Base64)"]
     end
 
     UI --> Engine
@@ -71,215 +90,175 @@ flowchart TD
     Engine --> History
     Doc --> Buffer
     Engine --> Camera
-    Doc --> ViewportCanvas
-    Camera --> ViewportCanvas
+    Doc --> FloatingPreview
+    Engine -.-> GifWorker
+    Engine --> LocalStorage
+    Engine --> ProjectFile
+    ServiceWorker -.-> UI
 ```
 
-### Principais Decisões de Engenharia:
-1. **Desacoplamento Total do Core:** Toda a lógica gráfica e de regras matemáticas reside em `src/core/`, permitindo testes unitários fáceis ou portabilidade para desktop (Electron/Tauri) sem tocar na engine.
-2. **Buffer 32-bit (`Uint32Array`):** Cores representadas diretamente como inteiros de 32 bits (`0xAABBGGRR`), permitindo operações de acesso e blending ultrarrápidas via bitwise.
-3. **Undo/Redo Leve via Dirty Rects:** Em vez de clonar o canvas inteiro a cada traço, o `DrawRectCommand` grava apenas o retângulo delimitador $[minX, minY, width, height]$ dos pixels alterados, mantendo o consumo de memória estável mesmo após centenas de ações.
-4. **Escala Nearest-Neighbor sem Blur:** Renderização com `imageSmoothingEnabled = false` para nitidez absoluta em qualquer nível de zoom (1x a 64x).
+### Principais Decisões Técnicas:
+1. **Desacoplamento Total do Core:** Toda a lógica gráfica, de regras matemáticas e de serialização reside isolada em `src/core/`, viabilizando 64 testes unitários automatizados e permitindo portar o motor para Electron, Tauri ou Node sem reescrever uma única linha de código.
+2. **Buffer de Cores 32-bit (`Uint32Array`):** Cada pixel é manipulado diretamente como um inteiro de 32 bits (`0xAABBGGRR`). Misturas de cor (*alpha blending*) e leituras ocorrem via operadores bitwise com custo computacional mínimo.
+3. **Histórico via Retângulos Delimitadores (*Dirty Rects*):** Em vez de clonar o buffer inteiro a cada pincelada, o `DrawRectCommand` grava apenas o *bounding box* dos pixels alterados, mantendo o consumo de memória ultrabaixo mesmo após 200 ações consecutivas.
+4. **Multithreading com Web Worker:** A exportação de GIFs pesados executa em uma thread separada (`gif-export.worker.ts`), transferindo o buffer de bytes diretamente via zero-copy (`ArrayBuffer` transfer) com barra de progresso em tempo real e mantendo a interface a 60 FPS estáveis.
+5. **Ergonomia Multiplataforma (Desktop + Mobile):**
+   * **Desktop:** Amostras de cores duplas (Primária e Secundária com atalho `X`), clique com botão direito para pintar com a cor secundária, barra superior compacta para telas de notebook e barra lateral retrátil.
+   * **Tablets e Celulares:** Multitoque nativo com pinça (*pinch-to-zoom*), arrastar com 2 dedos para pan suave, toque de 2 dedos para **Desfazer (Undo)** e toque de 3 dedos para **Refazer (Redo)** (estilo Procreate).
 
 ---
 
-## 📁 Estrutura de Diretórios
+## ⌨️ Atalhos de Teclado & Gestos Touch
+
+| Entrada / Tecla | Ação |
+| :--- | :--- |
+| <kbd>Botão Esquerdo</kbd> | Pintar com a Cor Primária |
+| <kbd>Botão Direito</kbd> | Pintar com a Cor Secundária |
+| <kbd>X</kbd> | Inverter Cores Primária e Secundária |
+| <kbd>Toque 2 Dedos</kbd> | Desfazer (*Undo* em Tablets e Celulares) |
+| <kbd>Toque 3 Dedos</kbd> | Refazer (*Redo* em Tablets e Celulares) |
+| <kbd>2 Dedos (Arrastar / Pinça)</kbd> | Pan e Zoom suave na tela |
+| <kbd>Espaço</kbd> + Arrastar | Panning da Câmera (Desktop) |
+| <kbd>Scroll do Mouse</kbd> | Zoom centrado no cursor (1x a 64x) |
+| <kbd>B</kbd> | Pincel / Lápis (com suporte a Pixel-Perfect) |
+| <kbd>E</kbd> | Borracha |
+| <kbd>D</kbd> | Pincel Dithering (Padrões Checker, Sparse e Bayer) |
+| <kbd>L</kbd> | Reta (com trava automática 2:1 no modo Isométrico) |
+| <kbd>R</kbd> | Retângulo 2D |
+| <kbd>O</kbd> | Círculo / Elipse (com proporção isométrica no modo Iso) |
+| <kbd>C</kbd> | Bloco 3D Isométrico (Cubo paramétrico com auto-shading) |
+| <kbd>Y</kbd> | Cilindro 3D Isométrico (Topo elíptico + altura 3D) |
+| <kbd>P</kbd> | Rampa / Telhado 3D Isométrico (Declive 2:1) |
+| <kbd>G</kbd> | Balde de Tinta (*Flood Fill* com tolerância) |
+| <kbd>I</kbd> | Conta-gotas (*Color Picker*) |
+| <kbd>M</kbd> | Seleção Marquee Retangular (Mover, recortar, duplicar) |
+| <kbd>[</kbd> / <kbd>]</kbd> | Degrau de sombra mais escuro / mais claro da paleta |
+| <kbd>,</kbd> / <kbd>.</kbd> | Frame anterior / próximo na Linha do Tempo |
+| <kbd>Ctrl+S</kbd> | Salvar Projeto nativo (`.garden`) |
+| <kbd>Ctrl+Z</kbd> | Desfazer (*Undo*) |
+| <kbd>Ctrl+Y</kbd> | Refazer (*Redo*) |
+| <kbd>?</kbd> | Abrir Guia Visual de Atalhos de Teclado |
+
+---
+
+## 📦 Formatos de Exportação Suportados
+
+1. **PNG Escalável (1x a 16x):** Upscale nítido via nearest-neighbor sem interpolação bilinear.
+2. **GIF Animado (.gif):** Gerado via Web Worker com taxa de FPS customizável (1–24), fundo transparente ou com cor de preenchimento e loop contínuo.
+3. **Código Web Puro:**
+   * **CSS Box-Shadow:** 1 única tag `<div>` HTML estilizada inteiramente com sombras de pixels coloridos (ideal para ícones sem arquivos externos).
+   * **HTML5 Canvas 2D:** Script JavaScript autocontido para desenhar o sprite programaticamente.
+   * **SVG Vetorial:** Arquivo `.svg` com renderização `shape-rendering="crispEdges"`.
+4. **Spritesheet & Atlas JSON:** Exportação em tiras horizontais, verticais ou matriz grid com metadados estruturados para engines (Phaser, Godot, PixiJS e Unity).
+5. **Normal Maps 2.5D (.png):** Textura de relevo nos padrões DirectX (-Y) ou OpenGL (+Y) com inclinação isométrica de 30° para motores modernos com iluminação dinâmica.
+6. **Mapa de Repetição Isométrica (Floor Map .png):** Exportação direta do grid de tiles montado como piso de jogo.
+7. **Formato Nativo `.garden`:** Arquivo JSON com buffers de camadas em base64 para troca e backup de projetos inteiros.
+
+---
+
+## 📁 Estrutura do Código-Fonte
 
 ```
 garden-pixel-editor/
 ├── src/
 │   ├── core/                        # Motor Core em TypeScript Puro
-│   │   ├── types.ts                 # Tipagens centrais (Point, Rect, Layer, Frame, ToolType, ProjectionMode)
-│   │   ├── color.ts                 # Utilitários de cor 32-bit e alpha blend
-│   │   ├── pixel-buffer.ts          # Matriz de pixels com suporte a extração/blitting
-│   │   ├── history.ts               # Histórico de Undo/Redo com Dirty Rects
-│   │   ├── constraints.ts           # Algoritmos de trava angular 2:1 e wrap de coordenadas
-│   │   ├── algorithms.ts            # Bresenham, Flood Fill, Cubo, Cilindro, Rampa, Elipse e Dither
-│   │   ├── shading.ts               # Degraus de luminância da paleta e substituição de cor
-│   │   ├── project-file.ts          # Serialização .garden e autosave no localStorage
-│   │   ├── normal-map.ts            # Geração de normal map Sobel/Bevel e iluminação 2.5D
-│   │   ├── palette-importer.ts      # Parser de .hex, .gpl e amostragem de imagens
-│   │   ├── spritesheet.ts           # Gerador de atlas/spritesheets e metadados JSON
+│   │   ├── algorithms.ts            # Bresenham, FloodFill, Cubo, Cilindro, Rampa, Elipse e Dithering
+│   │   ├── code-export.ts           # Exportador CSS (box-shadow), Canvas 2D script e SVG vetorial
+│   │   ├── color.ts                 # Operações bitwise de cor 32-bit e conversão hex/rgba
+│   │   ├── constraints.ts           # Trava angular 2:1 e coordenadas toroidal wrap
 │   │   ├── document.ts              # Modelo multi-frames, camadas e composição
-│   │   ├── viewport.ts              # Câmera com Pan e Zoom centrado no cursor
-│   │   ├── editor-engine.ts         # Orquestrador central e gerenciador de animação/ferramentas
-│   │   ├── palettes.ts              # Paletas clássicas embutidas
-│   │   ├── code-export.ts           # Exportador para CSS puro (box-shadow) e SVG vetorial
-│   │   └── export.ts                # Exportador PNG em escalas 1x a 16x
-│   ├── components/                  # Componentes de Interface (React)
-│   │   ├── ViewportCanvas.tsx       # Canvas interativo com onion skinning, tiling e cursores
-│   │   ├── BrushSettingsBar.tsx     # Barra de pincel: tamanho, pixel-perfect, dither e sombreamento
-│   │   ├── Timeline.tsx             # Linha do tempo de frames com miniaturas ao vivo e reordenação
-│   │   ├── TopBar.tsx               # Barra superior com persistência, modos, novo projeto e exportações
-│   │   ├── ToolBar.tsx              # Barra de ferramentas vertical expandida
-│   │   ├── RightSidebar.tsx         # Paletas de cores, camadas avançadas (opacidade, merge, reorder)
-│   │   ├── FloatingPreview.tsx      # Janela flutuante de prévia 1:1 e 2x em tempo real com playback
-│   │   ├── NewProjectModal.tsx      # Modal de novo projeto e redimensionamento não-destrutivo
-│   │   ├── GifExportModal.tsx       # Modal de exportação de GIF animado com live preview e scaling
-│   │   ├── CodeExportModal.tsx      # Modal de exportação de código Web (CSS box-shadow & SVG)
-│   │   ├── StatusBar.tsx            # Barra de status com coordenadas reais e isométricas
-│   │   ├── ColorSwapModal.tsx       # Modal de substituição global de cores
-│   │   ├── PaletteModal.tsx         # Modal de importação/exportação de paletas
-│   │   ├── NormalMapModal.tsx       # Modal de geração de mapa de normais e prévia 2.5D
-│   │   ├── ShortcutsModal.tsx       # Modal de ajuda rápida com atalhos categorizados (?)
-│   │   └── SpritesheetModal.tsx     # Modal de exportação de spritesheets/atlas
-│   ├── App.tsx                      # Casca da aplicação e listener de atalhos globais
-│   ├── index.css                    # Configuração de tema e Tailwind CSS v4
-│   └── main.tsx                     # Ponto de entrada React
+│   │   ├── editor-engine.ts         # Orquestrador de ferramentas, cor primária/secundária e histórico
+│   │   ├── export.ts                # Renderização e download de PNGs em escalas 1x a 16x
+│   │   ├── gif-export.ts            # Codificação de GIF animado via gifenc
+│   │   ├── gif-worker-client.ts     # Cliente assíncrono para execução do GIF em Web Worker
+│   │   ├── history.ts               # Histórico de Undo/Redo com Dirty Rects
+│   │   ├── normal-map.ts            # Filtro Sobel, chanfro de silhueta e iluminação Blinn-Phong
+│   │   ├── palette-importer.ts      # Parsers para arquivos .hex, .gpl e amostragem de imagem
+│   │   ├── palettes.ts              # Paletas clássicas embutidas (PICO-8, Game Boy, EDG 32)
+│   │   ├── pixel-buffer.ts          # Matriz de pixels em Uint32Array com extração de sub-retângulos
+│   │   ├── project-file.ts          # Serialização .garden e autosave no localStorage
+│   │   ├── shading.ts               # Degraus de luminância da paleta e substituição de cor
+│   │   ├── spritesheet.ts           # Empacotador de spritesheet e gerador de atlas JSON
+│   │   ├── types.ts                 # Tipagens centrais
+│   │   └── viewport.ts              # Câmera com pan e zoom centrado no cursor/toque
+│   ├── workers/
+│   │   └── gif-export.worker.ts     # Web Worker para codificação de GIF off-thread
+│   ├── components/                  # Interface do Usuário (React)
+│   │   ├── BrushSettingsBar.tsx     # Tamanho do pincel, dither, pixel-perfect e atalhos
+│   │   ├── CodeExportModal.tsx      # Modal de exportação para CSS, Canvas 2D e SVG
+│   │   ├── FloatingPreview.tsx      # Mini-preview 1:1, 2x e 4x em tempo real com playback
+│   │   ├── GifExportModal.tsx       # Exportador de GIF animado com barra de progresso do Worker
+│   │   ├── IsometricTilingModal.tsx # Prévia de chão e mapa isométrico 2:1 em diamante
+│   │   ├── NewProjectModal.tsx      # Criação de projetos e redimensionamento de canvas com âncora
+│   │   ├── NormalMapModal.tsx       # Iluminação 2.5D interativa com luz dinâmica e presets
+│   │   ├── PaletteModal.tsx         # Importação de arquivos .hex/.gpl e extração de imagens
+│   │   ├── RightSidebar.tsx         # Amostras duplas, troca de cores (X) e gerenciador de camadas
+│   │   ├── ShortcutsModal.tsx       # Guia visual de atalhos e gestos touch (?)
+│   │   ├── SpritesheetModal.tsx     # Gerador de atlas/spritesheets em tiras ou grid
+│   │   ├── StatusBar.tsx            # Coordenadas em tempo real (Pixel X/Y e Isométrico U/V)
+│   │   ├── Timeline.tsx             # Faixa de frames com miniaturas ao vivo e onion skinning
+│   │   ├── ToolBar.tsx              # Barra de ferramentas com acesso rápido a todas as funções
+│   │   ├── TopBar.tsx               # Menu superior unificado, controle de zoom e modos
+│   │   └── ViewportCanvas.tsx       # Canvas de alta performance com suporte a multitoque
+│   ├── App.tsx                      # Casca da aplicação e listener global de atalhos
+│   ├── index.css                    # Scrollbars estilizadas dark e temas
+│   └── main.tsx                     # Ponto de entrada com registro de Service Worker
+├── .github/workflows/
+│   └── ci.yml                       # Pipeline de validação (Node 22, Oxlint, Vitest Coverage, Build, Pages)
 ├── package.json
-└── vite.config.ts
+└── vite.config.ts                   # Configuração do Vite com Tailwind e VitePWA
 ```
 
 ---
 
-## ⌨️ Atalhos de Teclado
+## 🧪 Testes Automatizados & Qualidade de Código
 
-| Tecla | Ação |
-| :--- | :--- |
-| <kbd>Espaço</kbd> + Arrastar | Panning da Câmera |
-| <kbd>Scroll do Mouse</kbd> | Zoom suave centrado no cursor |
-| <kbd>M</kbd> / <kbd>S</kbd> | Seleção Marquee (Arrastar / Recortar pixels) |
-| <kbd>B</kbd> | Lápis / Pincel |
-| <kbd>E</kbd> | Borracha |
-| <kbd>L</kbd> | Reta (trava em 2:1 no modo isométrico) |
-| <kbd>R</kbd> | Retângulo 2D |
-| <kbd>O</kbd> | Círculo / Elipse (com proporção isométrica no modo Iso) |
-| <kbd>D</kbd> | Pincel Dithering (Padrões de retícula xadrez, disperso ou Bayer) |
-| <kbd>C</kbd> | Bloco 3D Isométrico (com luz e sombra) |
-| <kbd>Y</kbd> | Cilindro 3D Isométrico (topo elíptico + projeção de altura) |
-| <kbd>P</kbd> | Rampa / Telhado 3D Isométrico (ângulo de declive 2:1) |
-| <kbd>G</kbd> | Balde de Tinta (*Flood Fill*) |
-| <kbd>I</kbd> | Conta-gotas (*Color Picker*) |
-| <kbd>[</kbd> / <kbd>]</kbd> | Diminuir / Aumentar tamanho do pincel (1px a 4px) |
-| <kbd>,</kbd> / <kbd>.</kbd> | Frame anterior / próximo na Timeline |
-| <kbd>Ctrl+S</kbd> | Salvar Projeto nativo (`.garden`) |
-| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Excluir área selecionada |
-| <kbd>Esc</kbd> | Desmarcar seleção |
-| <kbd>Ctrl+A</kbd> | Selecionar tudo |
-| <kbd>Ctrl+Z</kbd> | Desfazer (*Undo*) |
-| <kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd> | Refazer (*Redo*) |
-| <kbd>?</kbd> | Abrir / Fechar Guia Visual de Atalhos de Teclado |
+O repositório conta com **64 testes unitários automatizados** rodando com `@vitest/coverage-v8` e linting estático com `oxlint`:
 
----
+```bash
+# Executar todos os 64 testes unitários
+npm run test
 
-## 🎬 Linha do Tempo & Animação
+# Executar testes com relatório detalhado de cobertura (v8)
+npm run test:coverage
 
-* **Multi-Frames Nativo:** Crie, duplique, reordene e exclua quadros de animação em uma faixa de reprodução inferior docked.
-* **Controles de Reprodução:** Play/Pause com taxa de quadros configurável (1 a 30 FPS).
-* **Onion Skinning:** Visualização em papel vegetal com traços do quadro anterior (vermelho/âmbar a 30%) e quadro seguinte (azul/ciano a 30%).
-* **Exportação para Atlas:** Exporte animações completas direto para Spritesheets e arquivos de metadados JSON.
+# Executar linter ultrarrápido (0 warnings garantidos)
+npm run lint
 
----
+# Checagem de tipos estáticos TypeScript em modo estrito
+npx tsc -b
 
-## 💾 Persistência de Projetos & Autosave
-
-* **Formato Nativo `.garden`:** Estrutura JSON com metadados e camadas codificadas em base64 (`Uint32Array`), preservando frames, camadas, paleta e modos.
-* **Autosave à Prova de Falhas:** Gravação automática silenciosa em `localStorage` a cada pincelada ou alteração com restauração em 1 clique na TopBar.
-
----
-
-## 🖌️ Ferramentas Avançadas de Pixel Art
-
-* **Tamanho de Pincel Ajustável:** 1px, 2px, 3px ou 4px para traçado rápido ou preenchimento de áreas.
-* **Modo Pixel-Perfect:** Algoritmo que detecta e remove cantos em L duplos em tempo real, gerando contornos perfeitos de 1 pixel de espessura.
-* **Padrões de Dithering:**
-  * *Checker 50%*: Padrão xadrez clássico para transições de cor estilo 16-bit.
-  * *Sparse 25%*: Retícula dispersa suave.
-  * *Bayer 2×2*: Matriz de meio-tom ordenada.
-* **Assistente de Sombreado & Troca de Cor:**
-  * Clarear / Escurecer com base nos degraus de luminância da paleta ativa.
-  * Substituição global de cores (por camada ativa ou restrita à seleção marquee).
-
----
-
-## 📦 Primitivas Volumétricas Isométricas Expandidas
-
-* **Bloco 3D (`C`):** Cubos e paralelepípedos com faces superior, esquerda e direita sombreadas.
-* **Cilindro 3D (`Y`):** Topo elíptico isométrico com extrusão vertical para tubos, colunas e tambores.
-* **Rampa / Telhado 3D (`P`):** Primitiva inclinada ao longo do eixo isométrico para telhados e escadas.
-
----
-
-## 🎨 Paletas & Importador
-
-* **Paletas Embutidas:** PICO-8 (16 cores), Game Boy Original (4 tons), EDG 32 (Endesga) e Neon Cyberpunk.
-* **Importador Universal:**
-  * Importação direta de arquivos `.hex` (padrão Lospec) e `.gpl` (GIMP / Aseprite).
-  * Extração inteligente de cores a partir de qualquer imagem (PNG, JPG, WebP) com amostragem e limite customizável de cores.
-  * Exportação da paleta ativa para `.hex` ou `.gpl`.
-
----
-
-## 💡 Normal Maps 2.5D & Spritesheets
-
-* **Gerador de Mapas de Normais:** Cálculo de vetores tangentes via gradientes de Sobel com arredondamento de silhueta (*Bevel*), suporte a inclinação isométrica (~30°) e formatos OpenGL/DirectX.
-* **Prévia Interativa 2.5D:** Iluminação dinâmica em tempo real com fonte de luz pontual interativa e modelo Blinn-Phong.
-* **Atlas & Spritesheet:** Exportação em tiras horizontais, verticais ou grids por frames, camadas ou fatias de tiles, acompanhado de arquivo de metadados `.json` compatível com Phaser, Godot, PixiJS e Unity.
+# Build de produção otimizado para deploy PWA
+npm run build
+```
 
 ---
 
 ## 🚀 Como Executar Localmente
 
 ### Pré-requisitos
-* **Node.js** (versão 18+ recomendada)
+* **Node.js** (versão 20 ou 22 LTS recomendada)
 * **npm**
 
 ### Instalação e Execução
 ```bash
-# Acesse a pasta do projeto
+# Clone o repositório
+git clone https://github.com/FelipeGardenghiDev/garden-pixel-editor.git
+
+# Acesse a pasta
 cd garden-pixel-editor
 
 # Instale as dependências
 npm install
 
-# Inicie o servidor de desenvolvimento
+# Inicie o servidor local de desenvolvimento
 npm run dev
 ```
 
-### 🧪 Executando Testes e Qualidade
-```bash
-# Executa todos os testes unitários via Vitest
-npm run test
-
-# Executa testes em modo watch interativo
-npm run test:watch
-
-# Gera relatório completo de cobertura (v8)
-npm run test:coverage
-
-# Checagem estática ultrarrápida via Oxlint
-npm run lint
-
-# Checagem de tipos estáticos TypeScript
-npx tsc -b
-```
-
----
-
-## 🗺️ Roadmap & Status das Fases
-
-- [x] **Suíte de Testes Automatizados:** 54 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, camadas, paletas, exportação GIF, simetria e gerador CSS/SVG).
-- [x] **Pipeline de CI/CD (GitHub Actions):** Validação automática de lint, build, testes e deploy para GitHub Pages.
-- [x] **Modo Simetria / Espelhamento em Tempo Real (Mirror X / Y):** Eixos de simetria vertical e horizontal com guias visuais e espelhamento simultâneo de pincel e primitivas.
-- [x] **Exportador para Código Web (CSS box-shadow & SVG Vetorial):** Geração de CSS puro de 1 tag `<div>` para a web e vetores SVG com renderização `crispEdges`.
-- [x] **Gerenciamento Avançado de Camadas:** Controle fino de opacidade por camada (0–100%), reordenação por setas e **Drag & Drop nativo**, duplicação, renomeação inline e mesclagem (*Merge Down*).
-- [x] **Guia Visual de Atalhos de Teclado (?):** Modal categorizado de atalhos e produtividade acionável pela tecla `?` ou botão na barra superior.
-- [x] **Janela de Prévia Flutuante 1:1 / 2x:** Pré-visualização em escala real com reprodução de animação independente, controle de escala (1x/2x) e recolhimento (*collapse*).
-- [x] **Exportação de GIF Animado (.gif):** Codificador nativo via `gifenc` com controle de FPS, fundo transparente ou opaco, escalonamento nearest-neighbor (1x a 16x) e pré-visualização ao vivo.
-- [x] **Diálogo de Novo Projeto & Canvas Resize:** Presets clássicos de 16×16 a 128×128, dimensões livres (8 a 256px), trava 1:1 e redimensionamento não-destrutivo com âncora.
-- [x] **Miniaturas Visuais na Linha do Tempo:** Filmstrip com mini-canvas em tempo real de cada quadro da animação e botões de reordenação.
-- [x] **Linha do Tempo & Animação:** Suporte a múltiplos quadros (frames), taxa de FPS configurável, Onion Skinning e exportação de spritesheets.
-- [x] **Seleção & Transformação:** Ferramenta Marquee (`M`), seleção flutuante com arraste, atalhos de espelhamento Horizontal/Vertical e limpeza.
-- [x] **Importador de Paletas:** Suporte a `.gpl` (GIMP/Aseprite), `.hex` (Lospec), amostragem de imagens e persistência local.
-- [x] **Normal Map & Iluminação 2.5D:** Geração automática com bevel, preview interativo com ponto de luz 3D e exportação PNG.
-- [x] **Exportação de Spritesheet & Atlas:** Atlas de frames de animação, camadas, grid de tiles ou wrap 3×3 com metadados JSON para engines.
-- [x] **Persistência de Projeto Nativa:** Formato `.garden` (JSON + base64 buffers), diálogo de arquivo e autosave contínuo com restauração pós-crash.
-- [x] **Pixel Art Avançado:** Pincel com tamanhos 1–4px, Pixel-Perfect, Dithering (Checker, Sparse, Bayer), Elipses 2D/Iso.
-- [x] **Primitivas Volumétricas 3D:** Blocos (`C`), Cilindros (`Y`) e Rampas/Telhados (`P`) isométricos.
-- [x] **Color Grading & Shading:** Degraus de sombra da paleta e substituição de cor pontual ou por seleção.
+Abra seu navegador em `http://localhost:5173`. Para testar a instalação PWA no celular ou tablet, acesse o endereço da sua rede local (ex: `http://192.168.x.x:5173`) ou a [versão pública na web](https://felipegardenghidev.github.io/garden-pixel-editor/).
 
 ---
 
 ## 📄 Licença
 
-Distribuído sob a licença MIT. Sinta-se livre para usar, modificar e contribuir!
+Distribuído sob a licença MIT. Criado com foco em arquitetura limpa, computação gráfica para web e ergonomia para artistas e desenvolvedores de jogos independentes.

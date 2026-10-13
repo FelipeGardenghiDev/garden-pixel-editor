@@ -23,6 +23,10 @@ export class EditorEngine {
   public projectionMode: ProjectionMode = 'isometric';
   public primaryColor: string = '#000000';
   public primaryColor32: number = hexToUint32('#000000');
+  public secondaryColor: string = '#ffffff';
+  public secondaryColor32: number = hexToUint32('#ffffff');
+  public activeColorSlot: 'primary' | 'secondary' = 'primary';
+  private activeDrawButton: number = 0; // 0 for primary (left), 2 for secondary (right)
   
   public showPixelGrid: boolean = false;
   public showIsoGrid: boolean = false;
@@ -120,6 +124,39 @@ export class EditorEngine {
     this.primaryColor = hex;
     this.primaryColor32 = hexToUint32(hex);
     this.notifyState();
+  }
+
+  public setSecondaryColor(hex: string): void {
+    this.secondaryColor = hex;
+    this.secondaryColor32 = hexToUint32(hex);
+    this.notifyState();
+  }
+
+  public swapColors(): void {
+    const tmpHex = this.primaryColor;
+    const tmpU32 = this.primaryColor32;
+    this.primaryColor = this.secondaryColor;
+    this.primaryColor32 = this.secondaryColor32;
+    this.secondaryColor = tmpHex;
+    this.secondaryColor32 = tmpU32;
+    this.notifyState();
+  }
+
+  public setActiveColorSlot(slot: 'primary' | 'secondary'): void {
+    this.activeColorSlot = slot;
+    this.notifyState();
+  }
+
+  public setColorForActiveSlot(hex: string): void {
+    if (this.activeColorSlot === 'secondary') {
+      this.setSecondaryColor(hex);
+    } else {
+      this.setColor(hex);
+    }
+  }
+
+  public getActiveDrawColor32(): number {
+    return this.activeDrawButton === 2 ? this.secondaryColor32 : this.primaryColor32;
   }
 
   public newProject(width: number, height: number, mode?: ProjectionMode, palette?: Palette): void {
@@ -658,7 +695,8 @@ export class EditorEngine {
       return;
     }
 
-    if (e.button !== 0) return; // Only left-click draws
+    if (e.button !== 0 && e.button !== 2) return; // Allow left-click (primary) and right-click (secondary)
+    this.activeDrawButton = e.button;
 
     const p = this.viewport.screenToPixel(e.clientX, e.clientY, containerRect);
     this.isDrawing = true;
@@ -692,16 +730,23 @@ export class EditorEngine {
       const composite = this.document.composite();
       const col = composite.getPixel(p.x, p.y);
       if ((col & 0xFF000000) !== 0) {
-        this.setColor(uint32ToHex(col));
+        const hex = uint32ToHex(col);
+        if (e.button === 2) {
+          this.setSecondaryColor(hex);
+        } else {
+          this.setColor(hex);
+        }
       }
       this.isDrawing = false;
       return;
     }
 
+    const drawColor = this.getActiveDrawColor32();
+
     if (this.currentTool === 'bucket') {
       this.startStrokeTracking();
       const buf = new PixelBuffer(this.document.width, this.document.height, activeLayer.buffer);
-      const dirty = floodFill(buf, p.x, p.y, this.primaryColor32);
+      const dirty = floodFill(buf, p.x, p.y, drawColor);
       if (dirty) {
         // Record all affected pixels
         for (let r = dirty.y; r < dirty.y + dirty.height; r++) {
@@ -720,7 +765,7 @@ export class EditorEngine {
 
     if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
       this.startStrokeTracking();
-      const color = this.currentTool === 'eraser' ? 0 : this.primaryColor32;
+      const color = this.currentTool === 'eraser' ? 0 : drawColor;
       this.paintPixel(activeLayer, p.x, p.y, color);
       this.document.notify();
     }
@@ -768,8 +813,10 @@ export class EditorEngine {
     const activeLayer = this.document.getActiveLayer();
     if (!activeLayer || !activeLayer.visible) return;
 
+    const drawColor = this.getActiveDrawColor32();
+
     if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
-      const color = this.currentTool === 'eraser' ? 0 : this.primaryColor32;
+      const color = this.currentTool === 'eraser' ? 0 : drawColor;
       bresenhamLine(this.lastStrokePixel.x, this.lastStrokePixel.y, p.x, p.y, (x, y) => {
         this.paintPixel(activeLayer, x, y, color);
       });
@@ -784,19 +831,19 @@ export class EditorEngine {
         target = snapToOrthoAxis(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y);
       }
       bresenhamLine(this.strokeStartPixel.x, this.strokeStartPixel.y, target.x, target.y, (x, y) => {
-        this.plotPreviewPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, drawColor);
       });
       this.notifyState();
     } else if (this.currentTool === 'rectangle') {
       this.previewBuffer.clear();
       drawRectOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.plotPreviewPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, drawColor);
       });
       this.notifyState();
     } else if (this.currentTool === 'circle') {
       this.previewBuffer.clear();
       drawEllipseOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.plotPreviewPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, drawColor);
       });
       this.notifyState();
     } else if (this.currentTool === 'isocube') {
@@ -806,7 +853,7 @@ export class EditorEngine {
       const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
       const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoCube(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.plotPreviewPixel(x, y, col);
@@ -818,7 +865,7 @@ export class EditorEngine {
       const dy = p.y - this.strokeStartPixel.y;
       const radius = Math.max(2, Math.min(24, Math.abs(dx)));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoCylinder(this.strokeStartPixel, radius, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.plotPreviewPixel(x, y, col);
@@ -831,7 +878,7 @@ export class EditorEngine {
       const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
       const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoRamp(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.plotPreviewPixel(x, y, col);
@@ -872,6 +919,7 @@ export class EditorEngine {
     if (!activeLayer || !activeLayer.visible) return;
 
     const p = this.viewport.screenToPixel(e.clientX, e.clientY, containerRect);
+    const drawColor = this.getActiveDrawColor32();
 
     if (this.currentTool === 'pencil' || this.currentTool === 'eraser' || this.currentTool === 'dither') {
       const desc = this.currentTool === 'eraser' ? 'Borracha' : (this.currentTool === 'dither' ? 'Dithering' : 'Pincel');
@@ -886,21 +934,21 @@ export class EditorEngine {
 
       this.startStrokeTracking();
       bresenhamLine(this.strokeStartPixel.x, this.strokeStartPixel.y, target.x, target.y, (x, y) => {
-        this.paintPixel(activeLayer, x, y, this.primaryColor32);
+        this.paintPixel(activeLayer, x, y, drawColor);
       });
       this.previewBuffer.clear();
       this.commitStroke('Linha', activeLayer);
     } else if (this.currentTool === 'rectangle') {
       this.startStrokeTracking();
       drawRectOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.paintPixel(activeLayer, x, y, this.primaryColor32);
+        this.paintPixel(activeLayer, x, y, drawColor);
       });
       this.previewBuffer.clear();
       this.commitStroke('Retângulo', activeLayer);
     } else if (this.currentTool === 'circle') {
       this.startStrokeTracking();
       drawEllipseOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.paintPixel(activeLayer, x, y, this.primaryColor32);
+        this.paintPixel(activeLayer, x, y, drawColor);
       });
       this.previewBuffer.clear();
       this.commitStroke('Círculo / Elipse', activeLayer);
@@ -911,7 +959,7 @@ export class EditorEngine {
       const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
       const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoCube(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.paintPixel(activeLayer, x, y, col);
@@ -924,7 +972,7 @@ export class EditorEngine {
       const dy = p.y - this.strokeStartPixel.y;
       const radius = Math.max(2, Math.min(24, Math.abs(dx)));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoCylinder(this.strokeStartPixel, radius, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.paintPixel(activeLayer, x, y, col);
@@ -938,7 +986,7 @@ export class EditorEngine {
       const wSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dx) / 4) || 2));
       const dSteps = Math.max(1, Math.min(16, Math.round(Math.abs(dy) / 4) || 2));
       const hPixels = Math.max(2, Math.min(32, Math.abs(dy)));
-      const shades = deriveIsoShades(this.primaryColor32);
+      const shades = deriveIsoShades(drawColor);
 
       drawIsoRamp(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
         this.paintPixel(activeLayer, x, y, col);

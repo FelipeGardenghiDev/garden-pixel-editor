@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload,
-  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check, GripVertical, X, PanelRightClose, PanelRightOpen
+  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check, GripVertical, X, PanelRightClose, PanelRightOpen, ArrowLeftRight
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { PRESET_PALETTES } from '../core/palettes';
@@ -155,18 +155,56 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </button>
             </div>
 
-        {/* Current Color Indicator */}
-        <div className="flex items-center gap-2 mb-3 bg-zinc-950 p-2 rounded-lg border border-zinc-800/80">
-          <div
-            className="w-8 h-8 rounded-md border border-zinc-700 shadow-inner shrink-0"
-            style={{ backgroundColor: engine.primaryColor }}
-          />
-          <div className="flex-1">
-            <div className="text-[10px] uppercase font-mono text-zinc-400">Hexadecimal</div>
+        {/* Dual Color Swatch Indicator (Primary + Secondary + Swap) */}
+        <div className="flex items-center gap-2.5 mb-3 bg-zinc-950 p-2 rounded-lg border border-zinc-800/80">
+          <div className="relative w-9 h-9 shrink-0">
+            {/* Secondary Color Swatch (bottom-right) */}
+            <button
+              type="button"
+              onClick={() => engine.setActiveColorSlot('secondary')}
+              className={`absolute bottom-0 right-0 w-5.5 h-5.5 rounded border transition-all ${
+                engine.activeColorSlot === 'secondary'
+                  ? 'border-cyan-400 ring-2 ring-cyan-400/40 z-20 scale-105 shadow-md'
+                  : 'border-zinc-700 opacity-80 hover:opacity-100 z-10'
+              }`}
+              style={{ backgroundColor: engine.secondaryColor }}
+              title="Cor Secundária (Botão Direito). Clique para selecionar."
+              aria-label="Cor Secundária"
+            />
+            {/* Primary Color Swatch (top-left) */}
+            <button
+              type="button"
+              onClick={() => engine.setActiveColorSlot('primary')}
+              className={`absolute top-0 left-0 w-5.5 h-5.5 rounded border transition-all ${
+                engine.activeColorSlot === 'primary'
+                  ? 'border-cyan-400 ring-2 ring-cyan-400/40 z-20 scale-105 shadow-md'
+                  : 'border-zinc-700 opacity-80 hover:opacity-100 z-10'
+              }`}
+              style={{ backgroundColor: engine.primaryColor }}
+              title="Cor Primária (Botão Esquerdo). Clique para selecionar."
+              aria-label="Cor Primária"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => engine.swapColors()}
+            className="p-1 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 rounded transition-colors shrink-0"
+            title="Inverter Cores (Atalho: X)"
+            aria-label="Inverter Cores Primária e Secundária"
+          >
+            <ArrowLeftRight className="w-3.5 h-3.5" />
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between text-[10px] uppercase font-mono text-zinc-400">
+              <span className="truncate">{engine.activeColorSlot === 'primary' ? 'Primária (Esq)' : 'Secundária (Dir)'}</span>
+              <span className="text-[9px] text-zinc-500 font-normal">X: Inverter</span>
+            </div>
             <input
               type="text"
-              value={engine.primaryColor}
-              onChange={(e) => engine.setColor(e.target.value)}
+              value={engine.activeColorSlot === 'primary' ? engine.primaryColor : engine.secondaryColor}
+              onChange={(e) => engine.setColorForActiveSlot(e.target.value)}
               className="w-full bg-transparent text-xs font-mono font-semibold text-zinc-200 outline-none uppercase"
             />
           </div>
@@ -175,18 +213,25 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
         {/* Swatches Grid */}
         <div className="grid grid-cols-8 gap-1.5 p-1 bg-zinc-950/60 rounded-lg border border-zinc-800/50">
           {currentPalette.colors.map((hex, idx) => {
-            const isCurrent = engine.primaryColor.toLowerCase() === hex.toLowerCase();
+            const isPrimary = engine.primaryColor.toLowerCase() === hex.toLowerCase();
+            const isSecondary = engine.secondaryColor.toLowerCase() === hex.toLowerCase();
             return (
               <button
                 key={`${hex}-${idx}`}
-                onClick={() => engine.setColor(hex)}
+                onClick={() => engine.setColorForActiveSlot(hex)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  engine.setSecondaryColor(hex);
+                }}
                 style={{ backgroundColor: hex }}
-                className={`w-5 h-5 rounded-sm transition-transform ${
-                  isCurrent
-                    ? 'ring-2 ring-white scale-110 shadow-md z-10'
+                className={`w-5 h-5 rounded-sm transition-transform relative ${
+                  isPrimary
+                    ? 'ring-2 ring-cyan-400 scale-110 shadow-md z-10'
+                    : isSecondary
+                    ? 'ring-2 ring-zinc-400 scale-105 z-10'
                     : 'hover:scale-105 opacity-90 hover:opacity-100'
                 }`}
-                title={hex}
+                title={`${hex}\nClique Esquerdo: Atribuir\nClique Direito: Definir Secundária`}
               />
             );
           })}

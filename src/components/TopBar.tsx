@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle, Code2, ChevronDown, Layers 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle, Code2, ChevronDown, Layers, Grid
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
@@ -10,6 +10,7 @@ import { SpritesheetModal } from './SpritesheetModal';
 import { NewProjectModal } from './NewProjectModal';
 import { GifExportModal } from './GifExportModal';
 import { CodeExportModal } from './CodeExportModal';
+import { IsometricTilingModal } from './IsometricTilingModal';
 import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave } from '../core/project-file';
 
 interface TopBarProps {
@@ -25,6 +26,7 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
   const [isGifModalOpen, setIsGifModalOpen] = useState<boolean>(false);
   const [isCodeModalOpen, setIsCodeModalOpen] = useState<boolean>(false);
+  const [isIsoTilingModalOpen, setIsIsoTilingModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = (scale: number) => {
@@ -177,6 +179,18 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
               <Repeat className="w-3.5 h-3.5" />
               <span className="hidden xl:inline">Tileset Wrap</span>
             </button>
+
+            {engine.projectionMode === 'isometric' && (
+              <button
+                onClick={() => setIsIsoTilingModalOpen(true)}
+                className="px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 hover:bg-cyan-900/80 transition-all shrink-0"
+                title="Prévia de Repetição de Chão Isométrico 2:1"
+                aria-label="Prévia de Chão Isométrico"
+              >
+                <Grid className="w-3 h-3 text-cyan-400" />
+                <span className="hidden 2xl:inline">Chão 2:1</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -352,6 +366,17 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
                   <Sun className="w-3.5 h-3.5 text-amber-400" />
                   <span>Luz 2.5D & Normal Map</span>
                 </button>
+
+                <button
+                  onClick={() => {
+                    setIsIsoTilingModalOpen(true);
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full text-left px-2.5 py-1.5 rounded-lg text-cyan-300 hover:bg-cyan-950/40 hover:text-cyan-200 font-medium flex items-center gap-2 transition-colors"
+                >
+                  <Grid className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Repetição Isométrica (Chão 2:1)</span>
+                </button>
               </div>
             )}
           </div>
@@ -383,6 +408,12 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
     <NormalMapModal
       isOpen={isNormalMapModalOpen}
       onClose={() => setIsNormalMapModalOpen(false)}
+      engine={engine}
+    />
+
+    <IsometricTilingModal
+      isOpen={isIsoTilingModalOpen}
+      onClose={() => setIsIsoTilingModalOpen(false)}
       engine={engine}
     />
 

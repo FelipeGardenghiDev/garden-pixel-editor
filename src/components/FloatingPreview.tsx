@@ -8,11 +8,22 @@ interface FloatingPreviewProps {
 
 export const FloatingPreview: React.FC<FloatingPreviewProps> = ({ engine }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [scale, setScale] = useState<number>(2); // 1x or 2x preview
+  const [scale, setScale] = useState<1 | 2 | 4>(1); // 1x true scale, 2x or 4x preview
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
   const [previewFrameIdx, setPreviewFrameIdx] = useState<number>(0);
+  const [, setTick] = useState<number>(0);
+
+  // Re-render in real-time on any drawing stroke or engine event
+  useEffect(() => {
+    const unsubDoc = engine.document.onChange(() => setTick((t) => t + 1));
+    const unsubEngine = engine.onStateChange(() => setTick((t) => t + 1));
+    return () => {
+      unsubDoc();
+      unsubEngine();
+    };
+  }, [engine]);
 
   const doc = engine.document;
   const docW = doc.width;
@@ -82,11 +93,12 @@ export const FloatingPreview: React.FC<FloatingPreviewProps> = ({ engine }) => {
     return (
       <button
         onClick={() => setIsVisible(true)}
-        className="absolute bottom-4 right-4 z-30 p-2 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs flex items-center gap-1.5 transition-all"
+        className="absolute bottom-4 right-4 z-30 px-2.5 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-cyan-400 border border-zinc-700/80 rounded-xl shadow-xl backdrop-blur-md text-xs flex items-center gap-1.5 transition-all"
         title="Mostrar Prévia 1:1"
+        aria-label="Mostrar Prévia 1:1"
       >
         <Eye className="w-4 h-4 text-cyan-400" />
-        <span className="font-mono">1:1</span>
+        <span className="font-mono font-medium">1:1</span>
       </button>
     );
   }
@@ -105,14 +117,23 @@ export const FloatingPreview: React.FC<FloatingPreviewProps> = ({ engine }) => {
         </div>
 
         <div className="flex items-center gap-1">
-          {/* 1x / 2x scale toggle */}
-          <button
-            onClick={() => setScale(scale === 1 ? 2 : 1)}
-            className="px-1.5 py-0.5 text-[10px] font-mono rounded bg-zinc-800 text-cyan-300 hover:bg-zinc-700 transition-colors"
-            title="Alternar Escala 1x / 2x"
-          >
-            {scale}x
-          </button>
+          {/* 1x / 2x / 4x scale buttons */}
+          <div className="flex items-center bg-zinc-800 rounded p-0.5 border border-zinc-700/60">
+            {([1, 2, 4] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScale(s)}
+                className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+                  scale === s
+                    ? 'bg-cyan-600 text-white font-bold'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+                title={`Escala ${s}x`}
+              >
+                {s}x
+              </button>
+            ))}
+          </div>
 
           {/* Animation Play/Pause if multi-frame */}
           {frameCount > 1 && (

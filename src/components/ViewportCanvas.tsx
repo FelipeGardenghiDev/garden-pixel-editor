@@ -354,11 +354,24 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
     }
   }, [engine, render]);
 
-  // Multi-touch tracking for pinch-to-zoom and two-finger pan on tablets & smartphones
+  // Multi-touch tracking for pinch-to-zoom, two-finger pan and multi-finger tap gestures (Undo/Redo)
   const activePointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const initialPinchDistRef = useRef<number | null>(null);
   const initialPinchZoomRef = useRef<number>(engine.viewport.zoom);
   const lastPinchCenterRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Quick multi-touch tap tracker for Undo (2-finger tap) and Redo (3-finger tap)
+  const tapGestureRef = useRef<{
+    startTime: number;
+    maxPointers: number;
+    startPositions: Map<number, { x: number; y: number }>;
+    hasMoved: boolean;
+  }>({
+    startTime: 0,
+    maxPointers: 0,
+    startPositions: new Map(),
+    hasMoved: false,
+  });
 
   // Event handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -366,22 +379,34 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
     if (!rect) return;
 
     activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const count = activePointersRef.current.size;
 
-    if (activePointersRef.current.size === 1) {
+    if (count === 1) {
+      tapGestureRef.current = {
+        startTime: Date.now(),
+        maxPointers: 1,
+        startPositions: new Map([[e.pointerId, { x: e.clientX, y: e.clientY }]]),
+        hasMoved: false,
+      };
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       engine.handlePointerDown(e, rect);
-    } else if (activePointersRef.current.size === 2) {
-      // 2 fingers down: cancel single-touch drawing and start pinch-zoom / pan
+    } else {
+      tapGestureRef.current.maxPointers = Math.max(tapGestureRef.current.maxPointers, count);
+      tapGestureRef.current.startPositions.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // Multiple fingers down: cancel single-touch drawing
       engine.cancelDrawing();
 
-      const pts = Array.from(activePointersRef.current.values());
-      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
-      initialPinchDistRef.current = dist;
-      initialPinchZoomRef.current = engine.viewport.zoom;
-      lastPinchCenterRef.current = {
-        x: (pts[0].x + pts[1].x) / 2,
-        y: (pts[0].y + pts[1].y) / 2,
-      };
+      if (count === 2) {
+        const pts = Array.from(activePointersRef.current.values());
+        const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+        initialPinchDistRef.current = dist;
+        initialPinchZoomRef.current = engine.viewport.zoom;
+        lastPinchCenterRef.current = {
+          x: (pts[0].x + pts[1].x) / 2,
+          y: (pts[0].y + pts[1].y) / 2,
+        };
+      }
     }
   };
 
@@ -391,9 +416,18 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
 
     if (activePointersRef.current.has(e.pointerId)) {
       activePointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      // Track movement distance to distinguish tap vs pan/pinch
+      const startPos = tapGestureRef.current.startPositions.get(e.pointerId);
+      if (startPos) {
+        const dist = Math.hypot(e.clientX - startPos.x, e.clientY - startPos.y);
+        if (dist > 14) {
+          tapGestureRef.current.hasMoved = true;
+        }
+      }
     }
 
-    // Two-finger multi-touch gesture
+    // Two-finger multi-touch gesture (Pinch Zoom & Two-Finger Pan)
     if (
       activePointersRef.current.size === 2 &&
       initialPinchDistRef.current !== null &&
@@ -435,8 +469,26 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
       lastPinchCenterRef.current = null;
     }
 
-    if (activePointersRef.current.size === 0 && rect) {
-      engine.handlePointerUp(e, rect);
+    if (activePointersRef.current.size === 0) {
+      const elapsed = Date.now() - tapGestureRef.current.startTime;
+      const { maxPointers, hasMoved } = tapGestureRef.current;
+
+      // Procreate-style multi-finger tap gestures:
+      // 2-finger stationary tap = Undo
+      // 3-finger stationary tap = Redo
+      if (elapsed < 350 && !hasMoved) {
+        if (maxPointers === 2) {
+          engine.history.undo();
+          return;
+        } else if (maxPointers === 3) {
+          engine.history.redo();
+          return;
+        }
+      }
+
+      if (rect) {
+        engine.handlePointerUp(e, rect);
+      }
     }
   };
 

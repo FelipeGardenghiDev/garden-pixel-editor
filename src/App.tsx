@@ -30,8 +30,9 @@ export const App: React.FC = () => {
   // Global hotkeys
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+      // Ignore if typing in an input or textarea
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
 
       if (e.code === 'Space') {
         engine.isSpacePressed = true;
@@ -63,6 +64,8 @@ export const App: React.FC = () => {
         engine.prevFrame();
       } else if (e.key === '.') {
         engine.nextFrame();
+      } else if (e.key.toLowerCase() === 'x') {
+        engine.swapColors();
       } else if (e.key.toLowerCase() === 'b') {
         engine.setTool('pencil');
       } else if (e.key.toLowerCase() === 'd') {

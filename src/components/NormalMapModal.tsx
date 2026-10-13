@@ -227,13 +227,14 @@ export const NormalMapModal: React.FC<NormalMapModalProps> = ({
 
             <canvas
               ref={canvasRef}
+              onPointerDown={handlePointerMove}
               onPointerMove={handlePointerMove}
               className="rounded-xl border border-zinc-800 shadow-2xl cursor-crosshair touch-none max-w-full max-h-[420px] object-contain"
             />
 
             {viewMode === 'lit' && (
               <span className="text-[11px] text-zinc-500 mt-3 font-mono">
-                💡 Mova o cursor sobre o canvas para controlar a fonte de luz
+                💡 Clique ou arraste o cursor sobre o canvas para mover o foco de luz 3D
               </span>
             )}
           </div>
@@ -307,6 +308,25 @@ export const NormalMapModal: React.FC<NormalMapModalProps> = ({
               <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-400">
                 <Sun className="w-3.5 h-3.5" />
                 Propriedades da Luz
+              </div>
+
+              {/* Quick light presets */}
+              <div className="flex items-center gap-1.5">
+                {[
+                  { label: 'Sol', color: '#FFF8E7' },
+                  { label: 'Tocha', color: '#FF9933' },
+                  { label: 'Lua', color: '#6699FF' },
+                  { label: 'Neon', color: '#00F0FF' }
+                ].map(p => (
+                  <button
+                    key={p.label}
+                    onClick={() => setLightColor(p.color)}
+                    className="px-2 py-0.5 rounded text-[10px] border border-zinc-700 text-zinc-300 hover:text-white transition-colors"
+                    style={{ borderLeftColor: p.color, borderLeftWidth: 3 }}
+                  >
+                    {p.label}
+                  </button>
+                ))}
               </div>
 
               <div className="flex items-center justify-between">
