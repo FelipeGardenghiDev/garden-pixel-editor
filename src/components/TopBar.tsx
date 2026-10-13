@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
 import { NormalMapModal } from './NormalMapModal';
 import { SpritesheetModal } from './SpritesheetModal';
 import { NewProjectModal } from './NewProjectModal';
+import { GifExportModal } from './GifExportModal';
 import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave } from '../core/project-file';
 
 interface TopBarProps {
@@ -19,6 +20,7 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
   const [isNormalMapModalOpen, setIsNormalMapModalOpen] = useState<boolean>(false);
   const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
+  const [isGifModalOpen, setIsGifModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = (scale: number) => {
@@ -253,6 +255,15 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
           <span className="hidden sm:inline">Atlas</span>
         </button>
 
+        <button
+          onClick={() => setIsGifModalOpen(true)}
+          className="flex items-center gap-1.5 bg-purple-950/40 hover:bg-purple-900/50 text-purple-300 border border-purple-800/60 font-medium text-xs px-2.5 py-1.5 rounded-lg transition-all"
+          title="Exportar GIF Animado"
+        >
+          <Film className="w-3.5 h-3.5 text-purple-400" />
+          <span className="hidden sm:inline">GIF</span>
+        </button>
+
         <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
         <div className="relative">
@@ -300,6 +311,12 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
     <NewProjectModal
       isOpen={isNewProjectModalOpen}
       onClose={() => setIsNewProjectModalOpen(false)}
+      engine={engine}
+    />
+
+    <GifExportModal
+      isOpen={isGifModalOpen}
+      onClose={() => setIsGifModalOpen(false)}
       engine={engine}
     />
   </>
