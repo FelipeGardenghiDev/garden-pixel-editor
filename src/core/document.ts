@@ -214,6 +214,73 @@ export class PixelDocument {
     }
   }
 
+  public setLayerOpacity(id: string, opacity: number): void {
+    const layer = this.layers.find(l => l.id === id);
+    if (layer) {
+      layer.opacity = Math.max(0, Math.min(1, opacity));
+      this.notify();
+    }
+  }
+
+  public renameLayer(id: string, newName: string): boolean {
+    const layer = this.layers.find(l => l.id === id);
+    if (layer && newName.trim()) {
+      layer.name = newName.trim();
+      this.notify();
+      return true;
+    }
+    return false;
+  }
+
+  public duplicateLayer(id: string): Layer | undefined {
+    const idx = this.layers.findIndex(l => l.id === id);
+    if (idx === -1) return undefined;
+    const src = this.layers[idx];
+
+    const copy: Layer = {
+      id: `layer-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: `${src.name} (Cópia)`,
+      visible: src.visible,
+      opacity: src.opacity,
+      buffer: new Uint32Array(src.buffer)
+    };
+
+    this.layers.splice(idx + 1, 0, copy);
+    this.activeLayerId = copy.id;
+    this.notify();
+    return copy;
+  }
+
+  public moveLayer(fromIndex: number, toIndex: number): boolean {
+    if (fromIndex === toIndex) return false;
+    if (fromIndex < 0 || fromIndex >= this.layers.length) return false;
+    if (toIndex < 0 || toIndex >= this.layers.length) return false;
+
+    const [moved] = this.layers.splice(fromIndex, 1);
+    this.layers.splice(toIndex, 0, moved);
+    this.notify();
+    return true;
+  }
+
+  public mergeLayerDown(id: string): boolean {
+    const idx = this.layers.findIndex(l => l.id === id);
+    if (idx <= 0) return false; // Must have a layer below it (index - 1)
+
+    const topLayer = this.layers[idx];
+    const bottomLayer = this.layers[idx - 1];
+
+    for (let i = 0; i < bottomLayer.buffer.length; i++) {
+      const fg = topLayer.buffer[i];
+      if ((fg & 0xFF000000) === 0) continue;
+      bottomLayer.buffer[i] = blendUint32(bottomLayer.buffer[i], fg, topLayer.opacity);
+    }
+
+    this.layers.splice(idx, 1);
+    this.activeLayerId = bottomLayer.id;
+    this.notify();
+    return true;
+  }
+
   /**
    * Composites all visible layers of a given frame into a single PixelBuffer.
    */

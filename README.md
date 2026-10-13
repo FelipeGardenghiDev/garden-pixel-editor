@@ -3,7 +3,7 @@
 > **Editor web moderno e especializado em Pixel Art**, com suporte nativo a **projeções por estilo** (Isométrico 2:1, Tileset Seamless Wrap e 2D Ortográfico clássico).
 
 [![CI & Deployment](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Vitest-44%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-46%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -108,10 +108,13 @@ garden-pixel-editor/
 │   ├── components/                  # Componentes de Interface (React)
 │   │   ├── ViewportCanvas.tsx       # Canvas interativo com onion skinning, tiling e cursores
 │   │   ├── BrushSettingsBar.tsx     # Barra de pincel: tamanho, pixel-perfect, dither e sombreamento
-│   │   ├── Timeline.tsx             # Linha do tempo de frames, FPS e onion skinning
-│   │   ├── TopBar.tsx               # Barra superior com persistência, modos e exportação
+│   │   ├── Timeline.tsx             # Linha do tempo de frames com miniaturas ao vivo e reordenação
+│   │   ├── TopBar.tsx               # Barra superior com persistência, modos, novo projeto e exportações
 │   │   ├── ToolBar.tsx              # Barra de ferramentas vertical expandida
-│   │   ├── RightSidebar.tsx         # Paletas de cores, camadas e guia de estilo
+│   │   ├── RightSidebar.tsx         # Paletas de cores, camadas avançadas (opacidade, merge, reorder)
+│   │   ├── FloatingPreview.tsx      # Janela flutuante de prévia 1:1 e 2x em tempo real com playback
+│   │   ├── NewProjectModal.tsx      # Modal de novo projeto e redimensionamento não-destrutivo
+│   │   ├── GifExportModal.tsx       # Modal de exportação de GIF animado com live preview e scaling
 │   │   ├── StatusBar.tsx            # Barra de status com coordenadas reais e isométricas
 │   │   ├── ColorSwapModal.tsx       # Modal de substituição global de cores
 │   │   ├── PaletteModal.tsx         # Modal de importação/exportação de paletas
@@ -251,8 +254,10 @@ npx tsc -b
 
 ## 🗺️ Roadmap & Status das Fases
 
-- [x] **Suíte de Testes Automatizados:** 44 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, paletas e exportação GIF).
+- [x] **Suíte de Testes Automatizados:** 46 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, camadas, paletas e exportação GIF).
 - [x] **Pipeline de CI/CD (GitHub Actions):** Validação automática de lint, build, testes e deploy para GitHub Pages.
+- [x] **Gerenciamento Avançado de Camadas:** Controle fino de opacidade por camada (0–100%), reordenação (mover para cima/baixo), duplicação, renomeação inline e mesclagem descendente (*Merge Down*).
+- [x] **Janela de Prévia Flutuante 1:1 / 2x:** Pré-visualização em escala real com reprodução de animação independente, controle de escala (1x/2x) e recolhimento (*collapse*).
 - [x] **Exportação de GIF Animado (.gif):** Codificador nativo via `gifenc` com controle de FPS, fundo transparente ou opaco, escalonamento nearest-neighbor (1x a 16x) e pré-visualização ao vivo.
 - [x] **Diálogo de Novo Projeto & Canvas Resize:** Presets clássicos de 16×16 a 128×128, dimensões livres (8 a 256px), trava 1:1 e redimensionamento não-destrutivo com âncora.
 - [x] **Miniaturas Visuais na Linha do Tempo:** Filmstrip com mini-canvas em tempo real de cada quadro da animação e botões de reordenação.

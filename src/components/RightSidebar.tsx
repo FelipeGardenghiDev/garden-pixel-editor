@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload 
+  Palette as PaletteIcon, Eye, EyeOff, Plus, Trash2, Info, Sparkles, Layers, Upload,
+  Copy, ChevronUp, ChevronDown, ArrowDownToLine, Edit2, Check
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { PRESET_PALETTES } from '../core/palettes';
@@ -22,6 +23,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
   });
   const [selectedPaletteId, setSelectedPaletteId] = useState<string>('pico-8');
   const [isPaletteModalOpen, setIsPaletteModalOpen] = useState<boolean>(false);
+  const [editingLayerId, setEditingLayerId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string>('');
 
   useEffect(() => {
     try {
@@ -126,11 +129,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
       </div>
 
       {/* 2. Layers Panel */}
-      <div className="p-3 border-b border-zinc-800 flex-1">
+      <div className="p-3 border-b border-zinc-800 flex flex-col">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
             <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            Camadas
+            Camadas ({engine.document.layers.length})
           </span>
           <button
             onClick={() => engine.document.addLayer()}
@@ -141,54 +144,201 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ engine }) => {
           </button>
         </div>
 
-        <div className="flex flex-col gap-1 max-h-48 overflow-y-auto">
-          {engine.document.layers.map((layer) => {
-            const isSelected = engine.document.activeLayerId === layer.id;
-            return (
-              <div
-                key={layer.id}
-                onClick={() => {
-                  engine.document.activeLayerId = layer.id;
-                  engine.notifyState();
-                }}
-                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border cursor-pointer transition-all ${
-                  isSelected
-                    ? 'bg-zinc-800 border-zinc-700 text-white font-medium'
-                    : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      engine.document.toggleLayerVisibility(layer.id);
-                    }}
-                    className="p-0.5 text-zinc-400 hover:text-white"
-                  >
-                    {layer.visible ? (
-                      <Eye className="w-3.5 h-3.5" />
-                    ) : (
-                      <EyeOff className="w-3.5 h-3.5 text-zinc-600" />
-                    )}
-                  </button>
-                  <span className="text-xs">{layer.name}</span>
-                </div>
-
-                {engine.document.layers.length > 1 && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      engine.document.deleteLayer(layer.id);
-                    }}
-                    className="p-1 text-zinc-500 hover:text-rose-400 opacity-0 group-hover:opacity-100 hover:opacity-100"
-                    title="Excluir Camada"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
+        {/* Active Layer Opacity Slider */}
+        {(() => {
+          const activeLayer = engine.document.getActiveLayer();
+          if (!activeLayer) return null;
+          return (
+            <div className="mb-2.5 p-2 bg-zinc-950/60 rounded-xl border border-zinc-800/80">
+              <div className="flex items-center justify-between mb-1 text-[11px]">
+                <span className="text-zinc-400">Opacidade ({activeLayer.name})</span>
+                <span className="font-mono font-bold text-cyan-400">
+                  {Math.round((activeLayer.opacity ?? 1) * 100)}%
+                </span>
               </div>
-            );
-          })}
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round((activeLayer.opacity ?? 1) * 100)}
+                onChange={(e) => {
+                  engine.setLayerOpacity(activeLayer.id, Number(e.target.value) / 100);
+                }}
+                className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg appearance-none"
+              />
+            </div>
+          );
+        })()}
+
+        {/* Layers list rendered top-to-bottom (stack order) */}
+        <div className="flex flex-col gap-1 max-h-56 overflow-y-auto">
+          {(() => {
+            const layers = engine.document.layers;
+            // Display top layers first
+            return [...layers].reverse().map((layer) => {
+              const actualIdx = layers.indexOf(layer);
+              const isSelected = engine.document.activeLayerId === layer.id;
+              const isEditing = editingLayerId === layer.id;
+
+              return (
+                <div
+                  key={layer.id}
+                  onClick={() => {
+                    engine.document.activeLayerId = layer.id;
+                    engine.notifyState();
+                  }}
+                  className={`group flex items-center justify-between px-2 py-1.5 rounded-lg border cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-zinc-800 border-zinc-700 text-white font-medium'
+                      : 'bg-zinc-950/40 border-zinc-800/60 text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        engine.document.toggleLayerVisibility(layer.id);
+                      }}
+                      className="p-0.5 text-zinc-400 hover:text-white shrink-0"
+                    >
+                      {layer.visible ? (
+                        <Eye className="w-3.5 h-3.5" />
+                      ) : (
+                        <EyeOff className="w-3.5 h-3.5 text-zinc-600" />
+                      )}
+                    </button>
+
+                    {isEditing ? (
+                      <div className="flex items-center gap-1 flex-1 mr-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              engine.renameLayer(layer.id, editingName);
+                              setEditingLayerId(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingLayerId(null);
+                            }
+                          }}
+                          autoFocus
+                          className="bg-zinc-900 border border-cyan-500 rounded px-1.5 py-0.5 text-xs text-white outline-none w-full"
+                        />
+                        <button
+                          onClick={() => {
+                            engine.renameLayer(layer.id, editingName);
+                            setEditingLayerId(null);
+                          }}
+                          className="p-0.5 text-cyan-400 hover:text-white"
+                        >
+                          <Check className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span 
+                        onDoubleClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLayerId(layer.id);
+                          setEditingName(layer.name);
+                        }}
+                        className="text-xs truncate flex-1"
+                        title="Duplo clique para renomear"
+                      >
+                        {layer.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions toolbar */}
+                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Move Up */}
+                    {actualIdx < layers.length - 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          engine.moveLayer(actualIdx, actualIdx + 1);
+                        }}
+                        className="p-0.5 text-zinc-400 hover:text-white rounded"
+                        title="Subir Camada"
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {/* Move Down */}
+                    {actualIdx > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          engine.moveLayer(actualIdx, actualIdx - 1);
+                        }}
+                        className="p-0.5 text-zinc-400 hover:text-white rounded"
+                        title="Descer Camada"
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {/* Merge Down */}
+                    {actualIdx > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          engine.mergeLayerDown(layer.id);
+                        }}
+                        className="p-0.5 text-zinc-400 hover:text-cyan-400 rounded"
+                        title="Mesclar com a camada abaixo"
+                      >
+                        <ArrowDownToLine className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {/* Duplicate */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        engine.duplicateLayer(layer.id);
+                      }}
+                      className="p-0.5 text-zinc-400 hover:text-white rounded"
+                      title="Duplicar Camada"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+
+                    {/* Rename icon */}
+                    {!isEditing && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingLayerId(layer.id);
+                          setEditingName(layer.name);
+                        }}
+                        className="p-0.5 text-zinc-400 hover:text-white rounded"
+                        title="Renomear"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    )}
+
+                    {/* Delete */}
+                    {layers.length > 1 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          engine.document.deleteLayer(layer.id);
+                        }}
+                        className="p-0.5 text-zinc-400 hover:text-rose-400 rounded"
+                        title="Excluir Camada"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 

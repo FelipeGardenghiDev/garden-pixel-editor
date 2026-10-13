@@ -117,5 +117,54 @@ describe('PixelDocument (Multi-frame & layer hierarchy with compositing)', () =>
     // Old (0, 0) should now be at (2, 2) -> index 2 * 12 + 2 = 26
     expect(doc.layers[0].buffer[2 * 12 + 2]).toBe(gold);
   });
+
+  it('handles layer duplication, renaming, opacity and reordering', () => {
+    const doc = new PixelDocument(4, 4);
+    const baseLayer = doc.layers[0];
+    baseLayer.buffer[0] = 0xFF112233;
+
+    // Duplicate layer
+    const duplicated = doc.duplicateLayer(baseLayer.id);
+    expect(duplicated).toBeDefined();
+    expect(doc.layers.length).toBe(2);
+    expect(duplicated!.buffer[0]).toBe(0xFF112233);
+    expect(duplicated!.name).toContain('(Cópia)');
+
+    // Rename
+    doc.renameLayer(duplicated!.id, 'Outline');
+    expect(duplicated!.name).toBe('Outline');
+
+    // Opacity
+    doc.setLayerOpacity(duplicated!.id, 0.5);
+    expect(duplicated!.opacity).toBe(0.5);
+
+    // Reorder layers
+    expect(doc.layers[0].id).toBe(baseLayer.id);
+    expect(doc.layers[1].id).toBe(duplicated!.id);
+
+    doc.moveLayer(0, 1);
+    expect(doc.layers[0].id).toBe(duplicated!.id);
+    expect(doc.layers[1].id).toBe(baseLayer.id);
+  });
+
+  it('merges layer down with alpha blend into the layer below', () => {
+    const doc = new PixelDocument(4, 4);
+    const bottomLayer = doc.layers[0];
+    bottomLayer.buffer.fill(0xFF000000); // Black
+
+    const topLayer = doc.addLayer('Top');
+    topLayer.buffer[0] = 0xFFFFFFFF; // White at (0, 0)
+
+    expect(doc.layers.length).toBe(2);
+
+    const merged = doc.mergeLayerDown(topLayer.id);
+    expect(merged).toBe(true);
+    expect(doc.layers.length).toBe(1);
+    expect(doc.layers[0].id).toBe(bottomLayer.id);
+    // (0, 0) should be white, rest black
+    expect(doc.layers[0].buffer[0]).toBe(0xFFFFFFFF);
+    expect(doc.layers[0].buffer[1]).toBe(0xFF000000);
+  });
 });
+
 

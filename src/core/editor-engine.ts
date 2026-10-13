@@ -214,6 +214,38 @@ export class EditorEngine {
     this.notifyState();
   }
 
+  public duplicateLayer(id?: string): void {
+    const targetId = id || this.document.activeLayerId;
+    this.document.duplicateLayer(targetId);
+    saveAutosave(this);
+    this.notifyState();
+  }
+
+  public renameLayer(id: string, name: string): void {
+    this.document.renameLayer(id, name);
+    saveAutosave(this);
+    this.notifyState();
+  }
+
+  public setLayerOpacity(id: string, opacity: number): void {
+    this.document.setLayerOpacity(id, opacity);
+    saveAutosave(this);
+    this.notifyState();
+  }
+
+  public moveLayer(fromIndex: number, toIndex: number): void {
+    this.document.moveLayer(fromIndex, toIndex);
+    saveAutosave(this);
+    this.notifyState();
+  }
+
+  public mergeLayerDown(id?: string): void {
+    const targetId = id || this.document.activeLayerId;
+    this.document.mergeLayerDown(targetId);
+    saveAutosave(this);
+    this.notifyState();
+  }
+
   public setFrame(index: number): void {
     this.document.setActiveFrame(index);
     this.notifyState();

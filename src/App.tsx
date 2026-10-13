@@ -7,6 +7,7 @@ import { ViewportCanvas } from './components/ViewportCanvas';
 import { Timeline } from './components/Timeline';
 import { RightSidebar } from './components/RightSidebar';
 import { StatusBar } from './components/StatusBar';
+import { FloatingPreview } from './components/FloatingPreview';
 import { downloadProjectFile } from './core/project-file';
 
 export const App: React.FC = () => {
@@ -109,6 +110,7 @@ export const App: React.FC = () => {
         <main className="flex-1 relative overflow-hidden flex flex-col">
           <div className="flex-1 relative overflow-hidden">
             <ViewportCanvas engine={engine} />
+            <FloatingPreview engine={engine} />
           </div>
           <Timeline engine={engine} />
         </main>
