@@ -165,6 +165,18 @@ export class PixelDocument {
     return true;
   }
 
+  public moveFrame(fromIndex: number, toIndex: number): boolean {
+    if (fromIndex === toIndex) return false;
+    if (fromIndex < 0 || fromIndex >= this.frames.length) return false;
+    if (toIndex < 0 || toIndex >= this.frames.length) return false;
+
+    const [moved] = this.frames.splice(fromIndex, 1);
+    this.frames.splice(toIndex, 0, moved);
+    this.activeFrameIndex = toIndex;
+    this.notify();
+    return true;
+  }
+
   public getActiveLayer(): Layer | undefined {
     return this.layers.find(l => l.id === this.activeLayerId) || this.layers[0];
   }
@@ -223,4 +235,41 @@ export class PixelDocument {
 
     return output;
   }
+
+  /**
+   * Resizes the document canvas dimensions, preserving existing layer pixels with an optional anchor offset.
+   */
+  public resizeCanvas(newWidth: number, newHeight: number, anchor: 'top-left' | 'center' = 'top-left'): void {
+    const oldWidth = this.width;
+    const oldHeight = this.height;
+    if (oldWidth === newWidth && oldHeight === newHeight) return;
+
+    let offsetX = 0;
+    let offsetY = 0;
+    if (anchor === 'center') {
+      offsetX = Math.floor((newWidth - oldWidth) / 2);
+      offsetY = Math.floor((newHeight - oldHeight) / 2);
+    }
+
+    for (const frame of this.frames) {
+      for (const layer of frame.layers) {
+        const newBuf = new Uint32Array(newWidth * newHeight);
+        for (let y = 0; y < oldHeight; y++) {
+          const targetY = y + offsetY;
+          if (targetY < 0 || targetY >= newHeight) continue;
+          for (let x = 0; x < oldWidth; x++) {
+            const targetX = x + offsetX;
+            if (targetX < 0 || targetX >= newWidth) continue;
+            newBuf[targetY * newWidth + targetX] = layer.buffer[y * oldWidth + x];
+          }
+        }
+        layer.buffer = newBuf;
+      }
+    }
+
+    this.width = newWidth;
+    this.height = newHeight;
+    this.notify();
+  }
 }
+

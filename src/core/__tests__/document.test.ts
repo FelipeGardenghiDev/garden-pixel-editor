@@ -75,4 +75,47 @@ describe('PixelDocument (Multi-frame & layer hierarchy with compositing)', () =>
     const hiddenComposite = doc.composite();
     expect(hiddenComposite.getPixel(0, 0)).toBe(red);
   });
+
+  it('reorders frames via moveFrame', () => {
+    const doc = new PixelDocument(4, 4);
+    const frame1 = doc.frames[0];
+    frame1.name = 'First';
+
+    const frame2 = doc.addFrame();
+    frame2.name = 'Second';
+
+    const frame3 = doc.addFrame();
+    frame3.name = 'Third';
+
+    expect(doc.frames.map(f => f.name)).toEqual(['First', 'Second', 'Third']);
+
+    // Move frame 0 to index 2
+    const moved = doc.moveFrame(0, 2);
+    expect(moved).toBe(true);
+    expect(doc.frames.map(f => f.name)).toEqual(['Second', 'Third', 'First']);
+    expect(doc.activeFrameIndex).toBe(2);
+  });
+
+  it('resizes canvas preserving existing pixels with anchor', () => {
+    const doc = new PixelDocument(4, 4);
+    const gold = 0xFFFFD700;
+    doc.layers[0].buffer[0] = gold; // pixel at (0, 0)
+
+    // Resize to 8x8 with top-left anchor
+    doc.resizeCanvas(8, 8, 'top-left');
+    expect(doc.width).toBe(8);
+    expect(doc.height).toBe(8);
+    expect(doc.layers[0].buffer.length).toBe(64);
+    expect(doc.layers[0].buffer[0]).toBe(gold); // still at (0, 0)
+    expect(doc.layers[0].buffer[63]).toBe(0);
+
+    // Resize to 12x12 with center anchor
+    // Offset should be (12-8)/2 = 2
+    doc.resizeCanvas(12, 12, 'center');
+    expect(doc.width).toBe(12);
+    expect(doc.height).toBe(12);
+    // Old (0, 0) should now be at (2, 2) -> index 2 * 12 + 2 = 26
+    expect(doc.layers[0].buffer[2 * 12 + 2]).toBe(gold);
+  });
 });
+

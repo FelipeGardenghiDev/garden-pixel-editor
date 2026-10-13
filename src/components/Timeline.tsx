@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
-  Play, Pause, SkipBack, SkipForward, Plus, Copy, Trash2, Layers 
+  Play, Pause, SkipBack, SkipForward, Plus, Copy, Trash2, Layers, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 
@@ -8,13 +8,77 @@ interface TimelineProps {
   engine: EditorEngine;
 }
 
+interface FrameThumbnailProps {
+  engine: EditorEngine;
+  frameIndex: number;
+  size?: number;
+}
+
+const FrameThumbnail: React.FC<FrameThumbnailProps> = ({ engine, frameIndex, size = 36 }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const doc = engine.document;
+    const docW = doc.width;
+    const docH = doc.height;
+
+    // 1. Draw checkerboard transparency
+    ctx.clearRect(0, 0, size, size);
+    const chkSize = 4;
+    for (let y = 0; y < size; y += chkSize) {
+      for (let x = 0; x < size; x += chkSize) {
+        const isEven = (Math.floor(x / chkSize) + Math.floor(y / chkSize)) % 2 === 0;
+        ctx.fillStyle = isEven ? '#27272a' : '#18181b';
+        ctx.fillRect(x, y, chkSize, chkSize);
+      }
+    }
+
+    // 2. Composite frame pixels
+    const composite = doc.composite(undefined, frameIndex);
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = docW;
+    tempCanvas.height = docH;
+    const tempCtx = tempCanvas.getContext('2d');
+    if (tempCtx) {
+      const imgData = tempCtx.createImageData(docW, docH);
+      new Uint32Array(imgData.data.buffer).set(composite.data);
+      tempCtx.putImageData(imgData, 0, 0);
+
+      // 3. Draw scaled without anti-aliasing
+      ctx.imageSmoothingEnabled = false;
+      const scale = Math.min(size / docW, size / docH);
+      const renderW = Math.max(1, Math.round(docW * scale));
+      const renderH = Math.max(1, Math.round(docH * scale));
+      const offX = Math.round((size - renderW) / 2);
+      const offY = Math.round((size - renderH) / 2);
+
+      ctx.drawImage(tempCanvas, offX, offY, renderW, renderH);
+    }
+  }, [engine, frameIndex, size, engine.document.width, engine.document.height, engine.document.frames]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      className="rounded bg-zinc-950 shrink-0 shadow-inner pointer-events-none"
+      style={{ imageRendering: 'pixelated' }}
+    />
+  );
+};
+
 export const Timeline: React.FC<TimelineProps> = ({ engine }) => {
   const doc = engine.document;
   const frames = doc.frames;
   const currentIdx = doc.activeFrameIndex;
 
   return (
-    <div className="h-16 bg-zinc-950/95 border-t border-zinc-800/80 px-4 flex items-center justify-between select-none shrink-0 z-20 backdrop-blur-xs">
+    <div className="h-18 bg-zinc-950/95 border-t border-zinc-800/80 px-4 flex items-center justify-between select-none shrink-0 z-20 backdrop-blur-xs">
       {/* Left: Playback & Frame Stepper */}
       <div className="flex items-center gap-2">
         <button
@@ -82,23 +146,61 @@ export const Timeline: React.FC<TimelineProps> = ({ engine }) => {
         </button>
       </div>
 
-      {/* Center: Frame Filmstrip */}
-      <div className="flex-1 max-w-xl mx-4 flex items-center gap-1.5 overflow-x-auto py-1">
+      {/* Center: Frame Filmstrip with Real Live Thumbnails */}
+      <div className="flex-1 max-w-xl mx-4 flex items-center gap-2 overflow-x-auto py-1 px-1">
         {frames.map((frame, idx) => {
           const isActive = idx === currentIdx;
           return (
-            <button
+            <div
               key={frame.id}
-              onClick={() => engine.setFrame(idx)}
-              className={`h-10 min-w-12 px-2.5 rounded-lg border flex flex-col items-center justify-center text-xs transition-all shrink-0 ${
+              className={`relative group flex items-center rounded-xl p-1 border transition-all shrink-0 cursor-pointer ${
                 isActive
-                  ? 'bg-cyan-600 border-cyan-400 text-white font-bold shadow-md shadow-cyan-600/30 ring-1 ring-cyan-300'
-                  : 'bg-zinc-900/90 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                  ? 'bg-cyan-950/60 border-cyan-500 ring-2 ring-cyan-500/40 shadow-lg shadow-cyan-950/60'
+                  : 'bg-zinc-900/80 border-zinc-800/80 hover:border-zinc-700 hover:bg-zinc-850'
               }`}
+              onClick={() => engine.setFrame(idx)}
             >
-              <span className="text-[10px] uppercase font-mono opacity-80 leading-none">Q</span>
-              <span className="font-mono text-xs leading-tight">{idx + 1}</span>
-            </button>
+              {/* Thumbnail */}
+              <FrameThumbnail engine={engine} frameIndex={idx} size={40} />
+
+              {/* Frame Number badge */}
+              <div className="flex flex-col items-center justify-center px-1.5 min-w-6">
+                <span className="text-[9px] uppercase font-mono text-zinc-500 leading-none">Q</span>
+                <span className={`font-mono text-xs font-bold leading-tight ${isActive ? 'text-cyan-300' : 'text-zinc-300'}`}>
+                  {idx + 1}
+                </span>
+              </div>
+
+              {/* Reorder controls on hover */}
+              {frames.length > 1 && (
+                <div className="absolute -top-3 right-0 hidden group-hover:flex items-center gap-0.5 bg-zinc-900 border border-zinc-700 rounded-md p-0.5 shadow-lg z-30">
+                  {idx > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        engine.moveFrame(idx, idx - 1);
+                      }}
+                      className="p-0.5 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                      title="Mover quadro para a esquerda"
+                    >
+                      <ChevronLeft className="w-3 h-3" />
+                    </button>
+                  )}
+                  {idx < frames.length - 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        engine.moveFrame(idx, idx + 1);
+                      }}
+                      className="p-0.5 text-zinc-400 hover:text-white rounded hover:bg-zinc-800"
+                      title="Mover quadro para a direita"
+                    >
+                      <ChevronRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           );
         })}
       </div>

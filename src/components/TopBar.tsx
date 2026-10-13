@@ -1,12 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
 import { NormalMapModal } from './NormalMapModal';
 import { SpritesheetModal } from './SpritesheetModal';
+import { NewProjectModal } from './NewProjectModal';
 import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave } from '../core/project-file';
 
 interface TopBarProps {
@@ -17,6 +18,7 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
   const [isNormalMapModalOpen, setIsNormalMapModalOpen] = useState<boolean>(false);
   const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
+  const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = (scale: number) => {
@@ -58,16 +60,30 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
                 EDITOR
               </span>
             </h1>
-            <p className="text-[11px] text-zinc-500 font-mono">
-              {engine.document.width} × {engine.document.height}px
-            </p>
+            <button
+              onClick={() => setIsNewProjectModalOpen(true)}
+              className="text-[11px] text-zinc-500 hover:text-cyan-400 font-mono transition-colors text-left flex items-center gap-1 group"
+              title="Clique para redimensionar o canvas"
+            >
+              <span>{engine.document.width} × {engine.document.height}px</span>
+              <span className="text-[9px] text-zinc-600 group-hover:text-cyan-500">⚙</span>
+            </button>
           </div>
         </div>
 
         <div className="h-6 w-px bg-zinc-800 mx-1" />
 
-        {/* Project Save / Load actions */}
+        {/* Project Save / Load / New actions */}
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsNewProjectModalOpen(true)}
+            className="p-1.5 px-2 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 hover:text-white rounded-lg border border-cyan-800/60 flex items-center gap-1.5 text-xs transition-colors"
+            title="Novo Projeto ou Redimensionar Canvas"
+          >
+            <FilePlus className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden md:inline font-medium">Novo</span>
+          </button>
+
           <button
             onClick={handleSaveProject}
             className="p-1.5 px-2 bg-zinc-950 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg border border-zinc-800 flex items-center gap-1.5 text-xs transition-colors"
@@ -278,6 +294,12 @@ export const TopBar: React.FC<TopBarProps> = ({ engine }) => {
     <SpritesheetModal
       isOpen={isSpritesheetModalOpen}
       onClose={() => setIsSpritesheetModalOpen(false)}
+      engine={engine}
+    />
+
+    <NewProjectModal
+      isOpen={isNewProjectModalOpen}
+      onClose={() => setIsNewProjectModalOpen(false)}
       engine={engine}
     />
   </>

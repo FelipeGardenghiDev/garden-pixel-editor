@@ -1,4 +1,4 @@
-import type { ToolType, ProjectionMode, Point, Rect, Layer, DitherMode } from './types';
+import type { ToolType, ProjectionMode, Point, Rect, Layer, DitherMode, Palette } from './types';
 import { PixelDocument } from './document';
 import { Viewport } from './viewport';
 import { HistoryManager, DrawRectCommand } from './history';
@@ -112,6 +112,30 @@ export class EditorEngine {
     this.notifyState();
   }
 
+  public newProject(width: number, height: number, mode?: ProjectionMode, palette?: Palette): void {
+    if (this.isPlaying) this.pause();
+    const pal = palette || this.document.activePalette;
+    this.document = new PixelDocument(width, height, pal);
+    if (mode) this.projectionMode = mode;
+    this.selectionRect = null;
+    this.floatingSelection = null;
+    this.previewBuffer = new PixelBuffer(width, height);
+    this.history.clear();
+    this.document.onChange(() => this.notifyState());
+    saveAutosave(this);
+    this.notifyState();
+  }
+
+  public resizeCanvas(newWidth: number, newHeight: number, anchor: 'top-left' | 'center' = 'top-left'): void {
+    this.commitFloatingSelection();
+    this.selectionRect = null;
+    this.document.resizeCanvas(newWidth, newHeight, anchor);
+    this.previewBuffer = new PixelBuffer(newWidth, newHeight);
+    this.history.clear();
+    saveAutosave(this);
+    this.notifyState();
+  }
+
   public togglePixelGrid(): void {
     this.showPixelGrid = !this.showPixelGrid;
     this.notifyState();
@@ -182,6 +206,11 @@ export class EditorEngine {
 
   public deleteFrame(): void {
     this.document.deleteFrame();
+    this.notifyState();
+  }
+
+  public moveFrame(fromIndex: number, toIndex: number): void {
+    this.document.moveFrame(fromIndex, toIndex);
     this.notifyState();
   }
 
