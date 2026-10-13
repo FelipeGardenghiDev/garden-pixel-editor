@@ -24,8 +24,8 @@ export class EditorEngine {
   public primaryColor: string = '#000000';
   public primaryColor32: number = hexToUint32('#000000');
   
-  public showPixelGrid: boolean = true;
-  public showIsoGrid: boolean = true;
+  public showPixelGrid: boolean = false;
+  public showIsoGrid: boolean = false;
   public isoStepSize: number = 4; // grid spacing for isometric guides
 
   // Brush and Dithering settings
