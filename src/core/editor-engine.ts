@@ -33,6 +33,10 @@ export class EditorEngine {
   public pixelPerfect: boolean = false;
   public ditherMode: DitherMode = 'none';
 
+  // Symmetry settings
+  public symmetryX: boolean = false; // Vertical mirror line (flips left <-> right)
+  public symmetryY: boolean = false; // Horizontal mirror line (flips top <-> bottom)
+
   // Animation & Timeline state
   public fps: number = 8;
   public isPlaying: boolean = false;
@@ -143,6 +147,16 @@ export class EditorEngine {
 
   public toggleIsoGrid(): void {
     this.showIsoGrid = !this.showIsoGrid;
+    this.notifyState();
+  }
+
+  public toggleSymmetryX(): void {
+    this.symmetryX = !this.symmetryX;
+    this.notifyState();
+  }
+
+  public toggleSymmetryY(): void {
+    this.symmetryY = !this.symmetryY;
     this.notifyState();
   }
 
@@ -502,9 +516,35 @@ export class EditorEngine {
   }
 
   /**
-   * Sets pixel on active layer and records old state for dirty rect, supporting brushSize and dithering.
+   * Internal helper to set a single pixel on the layer buffer with boundary checking and dirty rect tracking.
    */
-  private paintPixel(layer: Layer, x: number, y: number, color32: number, checkDither: boolean = true): void {
+  private plotPixel(layer: Layer, px: number, py: number, color32: number): void {
+    if (this.projectionMode === 'wrap') {
+      px = wrapCoordinate(px, this.document.width);
+      py = wrapCoordinate(py, this.document.height);
+    } else {
+      if (px < 0 || px >= this.document.width || py < 0 || py >= this.document.height) return;
+    }
+
+    const idx = py * this.document.width + px;
+    const oldVal = layer.buffer[idx];
+    if (oldVal === color32) return;
+
+    if (!this.modifiedPixelsMap.has(idx)) {
+      this.modifiedPixelsMap.set(idx, oldVal);
+    }
+    layer.buffer[idx] = color32;
+
+    this.dirtyMinX = Math.min(this.dirtyMinX, px);
+    this.dirtyMaxX = Math.max(this.dirtyMaxX, px);
+    this.dirtyMinY = Math.min(this.dirtyMinY, py);
+    this.dirtyMaxY = Math.max(this.dirtyMaxY, py);
+  }
+
+  /**
+   * Sets pixel on active layer and records old state for dirty rect, supporting brushSize, dithering and symmetry.
+   */
+  public paintPixel(layer: Layer, x: number, y: number, color32: number, checkDither: boolean = true): void {
     const size = this.currentTool === 'eraser' 
       ? Math.max(1, this.brushSize) 
       : (this.currentTool === 'pencil' || this.currentTool === 'dither' ? this.brushSize : 1);
@@ -513,36 +553,56 @@ export class EditorEngine {
       ? (this.ditherMode === 'none' ? 'checker' : this.ditherMode) 
       : this.ditherMode;
 
+    const docW = this.document.width;
+    const docH = this.document.height;
+
     for (let dy = 0; dy < size; dy++) {
       for (let dx = 0; dx < size; dx++) {
-        let px = x + dx;
-        let py = y + dy;
+        const px = x + dx;
+        const py = y + dy;
 
         if (checkDither && dither !== 'none' && this.currentTool !== 'eraser') {
           if (!isDitherPixel(px, py, dither)) continue;
         }
 
-        if (this.projectionMode === 'wrap') {
-          px = wrapCoordinate(px, this.document.width);
-          py = wrapCoordinate(py, this.document.height);
-        } else {
-          if (px < 0 || px >= this.document.width || py < 0 || py >= this.document.height) continue;
+        // 1. Primary pixel
+        this.plotPixel(layer, px, py, color32);
+
+        // 2. Horizontal mirror (vertical line of symmetry)
+        if (this.symmetryX) {
+          const mx = docW - 1 - px;
+          this.plotPixel(layer, mx, py, color32);
         }
 
-        const idx = py * this.document.width + px;
-        const oldVal = layer.buffer[idx];
-        if (oldVal === color32) continue;
-
-        if (!this.modifiedPixelsMap.has(idx)) {
-          this.modifiedPixelsMap.set(idx, oldVal);
+        // 3. Vertical mirror (horizontal line of symmetry)
+        if (this.symmetryY) {
+          const my = docH - 1 - py;
+          this.plotPixel(layer, px, my, color32);
         }
-        layer.buffer[idx] = color32;
 
-        this.dirtyMinX = Math.min(this.dirtyMinX, px);
-        this.dirtyMaxX = Math.max(this.dirtyMaxX, px);
-        this.dirtyMinY = Math.min(this.dirtyMinY, py);
-        this.dirtyMaxY = Math.max(this.dirtyMaxY, py);
+        // 4. Quad mirror (both axes active)
+        if (this.symmetryX && this.symmetryY) {
+          const mx = docW - 1 - px;
+          const my = docH - 1 - py;
+          this.plotPixel(layer, mx, my, color32);
+        }
       }
+    }
+  }
+
+  /**
+   * Sets a pixel on the temporary preview buffer, respecting symmetry.
+   */
+  private plotPreviewPixel(x: number, y: number, color: number): void {
+    this.previewBuffer.setPixel(x, y, color);
+    if (this.symmetryX) {
+      this.previewBuffer.setPixel(this.document.width - 1 - x, y, color);
+    }
+    if (this.symmetryY) {
+      this.previewBuffer.setPixel(x, this.document.height - 1 - y, color);
+    }
+    if (this.symmetryX && this.symmetryY) {
+      this.previewBuffer.setPixel(this.document.width - 1 - x, this.document.height - 1 - y, color);
     }
   }
 
@@ -718,19 +778,19 @@ export class EditorEngine {
         target = snapToOrthoAxis(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y);
       }
       bresenhamLine(this.strokeStartPixel.x, this.strokeStartPixel.y, target.x, target.y, (x, y) => {
-        this.previewBuffer.setPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, this.primaryColor32);
       });
       this.notifyState();
     } else if (this.currentTool === 'rectangle') {
       this.previewBuffer.clear();
       drawRectOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.previewBuffer.setPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, this.primaryColor32);
       });
       this.notifyState();
     } else if (this.currentTool === 'circle') {
       this.previewBuffer.clear();
       drawEllipseOutline(this.strokeStartPixel.x, this.strokeStartPixel.y, p.x, p.y, (x, y) => {
-        this.previewBuffer.setPixel(x, y, this.primaryColor32);
+        this.plotPreviewPixel(x, y, this.primaryColor32);
       });
       this.notifyState();
     } else if (this.currentTool === 'isocube') {
@@ -743,7 +803,7 @@ export class EditorEngine {
       const shades = deriveIsoShades(this.primaryColor32);
 
       drawIsoCube(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
-        this.previewBuffer.setPixel(x, y, col);
+        this.plotPreviewPixel(x, y, col);
       });
       this.notifyState();
     } else if (this.currentTool === 'isocylinder') {
@@ -755,7 +815,7 @@ export class EditorEngine {
       const shades = deriveIsoShades(this.primaryColor32);
 
       drawIsoCylinder(this.strokeStartPixel, radius, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
-        this.previewBuffer.setPixel(x, y, col);
+        this.plotPreviewPixel(x, y, col);
       });
       this.notifyState();
     } else if (this.currentTool === 'isoramp') {
@@ -768,7 +828,7 @@ export class EditorEngine {
       const shades = deriveIsoShades(this.primaryColor32);
 
       drawIsoRamp(this.strokeStartPixel, wSteps, dSteps, hPixels, shades.top, shades.left, shades.right, (x, y, col) => {
-        this.previewBuffer.setPixel(x, y, col);
+        this.plotPreviewPixel(x, y, col);
       });
       this.notifyState();
     }

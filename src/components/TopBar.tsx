@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle 
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle, Code2 
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
@@ -9,6 +9,7 @@ import { NormalMapModal } from './NormalMapModal';
 import { SpritesheetModal } from './SpritesheetModal';
 import { NewProjectModal } from './NewProjectModal';
 import { GifExportModal } from './GifExportModal';
+import { CodeExportModal } from './CodeExportModal';
 import { downloadProjectFile, openProjectFromFile, restoreAutosave, hasAutosave } from '../core/project-file';
 
 interface TopBarProps {
@@ -22,6 +23,7 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts }) => {
   const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
   const [isGifModalOpen, setIsGifModalOpen] = useState<boolean>(false);
+  const [isCodeModalOpen, setIsCodeModalOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleExport = (scale: number) => {
@@ -265,6 +267,15 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts }) => {
           <span className="hidden sm:inline">GIF</span>
         </button>
 
+        <button
+          onClick={() => setIsCodeModalOpen(true)}
+          className="flex items-center gap-1.5 bg-blue-950/40 hover:bg-blue-900/50 text-blue-300 border border-blue-800/60 font-medium text-xs px-2.5 py-1.5 rounded-lg transition-all"
+          title="Exportar como CSS box-shadow ou SVG vetorial"
+        >
+          <Code2 className="w-3.5 h-3.5 text-blue-400" />
+          <span className="hidden sm:inline">Código</span>
+        </button>
+
         <div className="h-5 w-px bg-zinc-800 mx-0.5" />
 
         <div className="relative">
@@ -326,6 +337,12 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts }) => {
     <GifExportModal
       isOpen={isGifModalOpen}
       onClose={() => setIsGifModalOpen(false)}
+      engine={engine}
+    />
+
+    <CodeExportModal
+      isOpen={isCodeModalOpen}
+      onClose={() => setIsCodeModalOpen(false)}
       engine={engine}
     />
   </>

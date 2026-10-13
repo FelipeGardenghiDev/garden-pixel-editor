@@ -70,6 +70,37 @@ export const BrushSettingsBar: React.FC<BrushSettingsBarProps> = ({ engine }) =>
               <option value="bayer">Bayer 2×2 (75%)</option>
             </select>
           </div>
+
+          <div className="h-4 w-px bg-zinc-800" />
+
+          {/* Symmetry Toggles */}
+          <div className="flex items-center gap-1">
+            <span className="text-[11px] text-zinc-500 font-mono">ESPELHO:</span>
+            <button
+              onClick={() => engine.toggleSymmetryX()}
+              className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-semibold flex items-center gap-1 transition-all border ${
+                engine.symmetryX
+                  ? 'bg-rose-950/60 text-rose-300 border-rose-700/60 shadow-xs'
+                  : 'bg-zinc-950/60 text-zinc-400 hover:text-zinc-200 border-zinc-800'
+              }`}
+              title="Simetria X (Espelhamento Vertical Esquerda/Direita)"
+            >
+              {engine.symmetryX && <Check className="w-3 h-3 text-rose-400" />}
+              X
+            </button>
+            <button
+              onClick={() => engine.toggleSymmetryY()}
+              className={`px-2 py-0.5 rounded-md font-mono text-[11px] font-semibold flex items-center gap-1 transition-all border ${
+                engine.symmetryY
+                  ? 'bg-rose-950/60 text-rose-300 border-rose-700/60 shadow-xs'
+                  : 'bg-zinc-950/60 text-zinc-400 hover:text-zinc-200 border-zinc-800'
+              }`}
+              title="Simetria Y (Espelhamento Horizontal Topo/Base)"
+            >
+              {engine.symmetryY && <Check className="w-3 h-3 text-rose-400" />}
+              Y
+            </button>
+          </div>
         </div>
 
         {/* Right: Shading Assist & Color Swap */}

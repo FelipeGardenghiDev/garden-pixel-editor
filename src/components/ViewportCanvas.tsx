@@ -248,7 +248,34 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
       ctx.restore();
     }
 
-    // 9. Draw Cursor Hover Indicator (with brush size support)
+    // 8.5. Draw Symmetry Guidelines
+    if (engine.symmetryX) {
+      const symSx = panX + (docW / 2) * zoom;
+      ctx.save();
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(symSx, panY);
+      ctx.lineTo(symSx, panY + docScreenH);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (engine.symmetryY) {
+      const symSy = panY + (docH / 2) * zoom;
+      ctx.save();
+      ctx.strokeStyle = '#f43f5e';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(panX, symSy);
+      ctx.lineTo(panX + docScreenW, symSy);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 9. Draw Cursor Hover Indicator (with brush size & symmetry support)
     if (engine.currentHoverPixel) {
       const hx = engine.currentHoverPixel.x;
       const hy = engine.currentHoverPixel.y;
@@ -256,12 +283,33 @@ export const ViewportCanvas: React.FC<ViewportCanvasProps> = ({ engine }) => {
         ? engine.brushSize
         : 1;
 
-      if (hx >= 0 && hx < docW && hy >= 0 && hy < docH) {
-        const sx = panX + hx * zoom;
-        const sy = panY + hy * zoom;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(sx, sy, zoom * size, zoom * size);
+      const drawCursorBox = (cx: number, cy: number, isMirror: boolean = false) => {
+        if (cx >= 0 && cx < docW && cy >= 0 && cy < docH) {
+          const sx = panX + cx * zoom;
+          const sy = panY + cy * zoom;
+          ctx.strokeStyle = isMirror ? '#fb7185' : '#ffffff';
+          ctx.lineWidth = 1.5;
+          if (isMirror) {
+            ctx.setLineDash([2, 2]);
+          } else {
+            ctx.setLineDash([]);
+          }
+          ctx.strokeRect(sx, sy, zoom * size, zoom * size);
+        }
+      };
+
+      // Primary cursor
+      drawCursorBox(hx, hy, false);
+
+      // Mirrored cursors
+      if (engine.symmetryX) {
+        drawCursorBox(docW - size - hx, hy, true);
+      }
+      if (engine.symmetryY) {
+        drawCursorBox(hx, docH - size - hy, true);
+      }
+      if (engine.symmetryX && engine.symmetryY) {
+        drawCursorBox(docW - size - hx, docH - size - hy, true);
       }
     }
   }, [engine]);

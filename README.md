@@ -3,7 +3,7 @@
 > **Editor web moderno e especializado em Pixel Art**, com suporte nativo a **projeções por estilo** (Isométrico 2:1, Tileset Seamless Wrap e 2D Ortográfico clássico).
 
 [![CI & Deployment](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/Vitest-46%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Vitest-54%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
@@ -104,6 +104,7 @@ garden-pixel-editor/
 │   │   ├── viewport.ts              # Câmera com Pan e Zoom centrado no cursor
 │   │   ├── editor-engine.ts         # Orquestrador central e gerenciador de animação/ferramentas
 │   │   ├── palettes.ts              # Paletas clássicas embutidas
+│   │   ├── code-export.ts           # Exportador para CSS puro (box-shadow) e SVG vetorial
 │   │   └── export.ts                # Exportador PNG em escalas 1x a 16x
 │   ├── components/                  # Componentes de Interface (React)
 │   │   ├── ViewportCanvas.tsx       # Canvas interativo com onion skinning, tiling e cursores
@@ -115,6 +116,7 @@ garden-pixel-editor/
 │   │   ├── FloatingPreview.tsx      # Janela flutuante de prévia 1:1 e 2x em tempo real com playback
 │   │   ├── NewProjectModal.tsx      # Modal de novo projeto e redimensionamento não-destrutivo
 │   │   ├── GifExportModal.tsx       # Modal de exportação de GIF animado com live preview e scaling
+│   │   ├── CodeExportModal.tsx      # Modal de exportação de código Web (CSS box-shadow & SVG)
 │   │   ├── StatusBar.tsx            # Barra de status com coordenadas reais e isométricas
 │   │   ├── ColorSwapModal.tsx       # Modal de substituição global de cores
 │   │   ├── PaletteModal.tsx         # Modal de importação/exportação de paletas
@@ -256,8 +258,10 @@ npx tsc -b
 
 ## 🗺️ Roadmap & Status das Fases
 
-- [x] **Suíte de Testes Automatizados:** 46 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, camadas, paletas e exportação GIF).
+- [x] **Suíte de Testes Automatizados:** 54 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit, histórico, camadas, paletas, exportação GIF, simetria e gerador CSS/SVG).
 - [x] **Pipeline de CI/CD (GitHub Actions):** Validação automática de lint, build, testes e deploy para GitHub Pages.
+- [x] **Modo Simetria / Espelhamento em Tempo Real (Mirror X / Y):** Eixos de simetria vertical e horizontal com guias visuais e espelhamento simultâneo de pincel e primitivas.
+- [x] **Exportador para Código Web (CSS box-shadow & SVG Vetorial):** Geração de CSS puro de 1 tag `<div>` para a web e vetores SVG com renderização `crispEdges`.
 - [x] **Gerenciamento Avançado de Camadas:** Controle fino de opacidade por camada (0–100%), reordenação por setas e **Drag & Drop nativo**, duplicação, renomeação inline e mesclagem (*Merge Down*).
 - [x] **Guia Visual de Atalhos de Teclado (?):** Modal categorizado de atalhos e produtividade acionável pela tecla `?` ou botão na barra superior.
 - [x] **Janela de Prévia Flutuante 1:1 / 2x:** Pré-visualização em escala real com reprodução de animação independente, controle de escala (1x/2x) e recolhimento (*collapse*).
