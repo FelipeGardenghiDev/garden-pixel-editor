@@ -2,10 +2,15 @@
 
 > **Editor web moderno e especializado em Pixel Art**, com suporte nativo a **projeções por estilo** (Isométrico 2:1, Tileset Seamless Wrap e 2D Ortográfico clássico).
 
+[![CI & Deployment](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeGardenghiDev/garden-pixel-editor/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/Vitest-39%20passed-729B1B?logo=vitest&logoColor=white)](https://vitest.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind-4.0-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Oxlint](https://img.shields.io/badge/Oxlint-0%20warnings-success)](https://oxc.rs/)
+
+> 🌐 **Live Demo:** [https://felipegardenghidev.github.io/garden-pixel-editor/](https://felipegardenghidev.github.io/garden-pixel-editor/)
 
 ---
 
@@ -224,12 +229,30 @@ npm install
 npm run dev
 ```
 
-Abra `http://localhost:5173` no navegador.
+### 🧪 Executando Testes e Qualidade
+```bash
+# Executa todos os testes unitários via Vitest
+npm run test
+
+# Executa testes em modo watch interativo
+npm run test:watch
+
+# Gera relatório completo de cobertura (v8)
+npm run test:coverage
+
+# Checagem estática ultrarrápida via Oxlint
+npm run lint
+
+# Checagem de tipos estáticos TypeScript
+npx tsc -b
+```
 
 ---
 
 ## 🗺️ Roadmap & Status das Fases
 
+- [x] **Suíte de Testes Automatizados:** 39 testes unitários cobrindo o core matemático (Bresenham, flood fill, projeção 2:1, buffers 32-bit e serialização).
+- [x] **Pipeline de CI/CD (GitHub Actions):** Validação automática de lint, build, testes e deploy para GitHub Pages.
 - [x] **Linha do Tempo & Animação:** Suporte a múltiplos quadros (frames), taxa de FPS configurável, Onion Skinning e exportação de spritesheets.
 - [x] **Seleção & Transformação:** Ferramenta Marquee (`M`), seleção flutuante com arraste, atalhos de espelhamento Horizontal/Vertical e limpeza.
 - [x] **Importador de Paletas:** Suporte a `.gpl` (GIMP/Aseprite), `.hex` (Lospec), amostragem de imagens e persistência local.
