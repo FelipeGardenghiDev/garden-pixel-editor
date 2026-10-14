@@ -259,6 +259,15 @@ Abra seu navegador em `http://localhost:5173`. Para testar a instalação PWA no
 
 ---
 
+## 🌐 Ecossistema Garden Apps & GC Studio
+
+O **Garden Pixel Editor** faz parte do ecossistema de ferramentas web-first de alta performance mantido pelo **GC Studio** (Felipe Gardenghi).
+
+Para entender o fluxo de trabalho integrado com o **GardenCut** (edição de vídeo e trailers), **VisuChord** (IA e gestos musicais) e **SimpleDrums**, consulte o guia de interoperabilidade em:
+👉 **[Guia do Ecossistema Garden Apps](ECOSYSTEM.md)**
+
+---
+
 ## 📄 Licença
 
 Distribuído sob a licença MIT. Criado com foco em arquitetura limpa, computação gráfica para web e ergonomia para artistas e desenvolvedores de jogos independentes.
