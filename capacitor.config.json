@@ -1,0 +1,6 @@
+{
+  "appId": "com.gardenghi.gardenpixeleditor",
+  "appName": "Garden Pixel Editor",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
