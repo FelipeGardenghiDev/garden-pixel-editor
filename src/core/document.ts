@@ -1,6 +1,6 @@
-import type { Layer, Palette, Frame } from './types';
+import type { Layer, Palette, Frame, BlendMode } from './types';
 import { PixelBuffer } from './pixel-buffer';
-import { blendUint32 } from './color';
+import { blendUint32, blendWithModeUint32 } from './color';
 
 export class PixelDocument {
   public width: number;
@@ -214,6 +214,15 @@ export class PixelDocument {
     }
   }
 
+
+  public setLayerBlendMode(id: string, mode: BlendMode): void {
+    const layer = this.layers.find(l => l.id === id);
+    if (layer) {
+      layer.blendMode = mode;
+      this.notify();
+    }
+  }
+
   public setLayerOpacity(id: string, opacity: number): void {
     const layer = this.layers.find(l => l.id === id);
     if (layer) {
@@ -296,7 +305,8 @@ export class PixelDocument {
       for (let i = 0; i < output.data.length; i++) {
         const fg = layer.buffer[i];
         if ((fg & 0xFF000000) === 0) continue; // transparent pixel
-        output.data[i] = blendUint32(output.data[i], fg, layer.opacity);
+        const mode = layer.blendMode || "normal";
+        output.data[i] = blendWithModeUint32(output.data[i], fg, mode, layer.opacity);
       }
     }
 

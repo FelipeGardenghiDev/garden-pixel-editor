@@ -5,6 +5,7 @@ import {
   uint32ToRgba, 
   uint32ToHex, 
   blendUint32, 
+  blendWithModeUint32,
   uint32ToCssRgba 
 } from '../color';
 
@@ -65,5 +66,39 @@ describe('Color utilities (32-bit Little-Endian ABGR in memory)', () => {
 
     // 100% opacity should return exact fg
     expect(blendUint32(bgBlack, fgWhite, 1)).toBe(fgWhite);
+  });
+  it('applies advanced layer blend modes (multiply, screen, overlay, darken, lighten)', () => {
+    const white = rgbaToUint32(255, 255, 255, 255);
+    const midGrey = rgbaToUint32(128, 128, 128, 255);
+    const red = rgbaToUint32(200, 0, 0, 255);
+
+    // Multiply with white leaves base unchanged
+    const mulWhite = blendWithModeUint32(red, white, 'multiply', 1);
+    expect(uint32ToRgba(mulWhite)[0]).toBe(200);
+
+    // Multiply with 50% grey darkens
+    const mulGrey = blendWithModeUint32(white, midGrey, 'multiply', 1);
+    const [rMul] = uint32ToRgba(mulGrey);
+    expect(rMul).toBe(128);
+
+    // Screen with black leaves base unchanged
+    const black = rgbaToUint32(0, 0, 0, 255);
+    const screenBlack = blendWithModeUint32(red, black, 'screen', 1);
+    expect(uint32ToRgba(screenBlack)[0]).toBe(200);
+
+    // Darken & Lighten
+    const c1 = rgbaToUint32(50, 200, 100, 255);
+    const c2 = rgbaToUint32(150, 100, 200, 255);
+    const darkened = blendWithModeUint32(c1, c2, 'darken', 1);
+    const [rd, gd, bd] = uint32ToRgba(darkened);
+    expect(rd).toBe(50);
+    expect(gd).toBe(100);
+    expect(bd).toBe(100);
+
+    const lightened = blendWithModeUint32(c1, c2, 'lighten', 1);
+    const [rl, gl, bl] = uint32ToRgba(lightened);
+    expect(rl).toBe(150);
+    expect(gl).toBe(200);
+    expect(bl).toBe(200);
   });
 });

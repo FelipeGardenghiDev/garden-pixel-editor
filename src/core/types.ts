@@ -28,11 +28,14 @@ export interface Rect {
   height: number;
 }
 
+export type BlendMode = 'normal' | 'multiply' | 'screen' | 'overlay' | 'darken' | 'lighten' | 'color-dodge';
+
 export interface Layer {
   id: string;
   name: string;
   visible: boolean;
   opacity: number; // 0 to 1
+  blendMode?: BlendMode;
   buffer: Uint32Array; // width * height RGBA packed
 }
 
