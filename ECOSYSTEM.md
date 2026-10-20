@@ -75,4 +75,4 @@ flowchart LR
 
 ## 🏛️ Central GC Studio
 Para acessar e conhecer toda a suíte de aplicativos e jogos, visite a central oficial do **GC Studio**:
-👉 [https://github.com/FelipeGardenghiDev/projeto-homestudio](https://github.com/FelipeGardenghiDev/projeto-homestudio)
+👉 [https://github.com/FelipeGardenghiDev/gcstudio](https://github.com/FelipeGardenghiDev/gcstudio)
