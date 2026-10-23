@@ -10,7 +10,12 @@ export const FloatingPreview: React.FC<FloatingPreviewProps> = ({ engine }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scale, setScale] = useState<1 | 2 | 4>(1); // 1x true scale, 2x or 4x preview
   const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
-  const [isVisible, setIsVisible] = useState<boolean>(true);
+  const [isVisible, setIsVisible] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 640;
+    }
+    return true;
+  });
   const [isPlayingPreview, setIsPlayingPreview] = useState<boolean>(false);
   const [previewFrameIdx, setPreviewFrameIdx] = useState<number>(0);
   const [, setTick] = useState<number>(0);

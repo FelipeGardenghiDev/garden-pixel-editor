@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -98,3 +98,15 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish Direct APK to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk garden-pixel-editor-v0.8.1.apk
+          gh release delete v0.8.1 --yes || true
+          git tag -d v0.8.1 || true
+          git push --delete origin v0.8.1 || true
+          gh release create v0.8.1 garden-pixel-editor-v0.8.1.apk \
+            --title "Garden Pixel Editor v0.8.1" \
+            --notes "Update: Mobile APK UI enhancements, always-visible Undo/Redo controls, floating quick actions, color swatches and Android system bar protection"

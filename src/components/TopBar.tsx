@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { 
   Undo2, Redo2, Grid3X3, Download, ZoomIn, ZoomOut, 
-  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle, Code2, ChevronDown, Layers, Grid
+  Compass, Box, Repeat, Sun, FileSpreadsheet, Save, FolderOpen, RotateCcw, FilePlus, Film, HelpCircle, Code2, ChevronDown, Layers, Grid,
+  MoreVertical
 } from 'lucide-react';
 import { EditorEngine } from '../core/editor-engine';
 import { exportDocumentToPng } from '../core/export';
@@ -21,6 +22,7 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggleSidebar }) => {
   const [showExportMenu, setShowExportMenu] = useState<boolean>(false);
+  const [showMobileProjectMenu, setShowMobileProjectMenu] = useState<boolean>(false);
   const [isNormalMapModalOpen, setIsNormalMapModalOpen] = useState<boolean>(false);
   const [isSpritesheetModalOpen, setIsSpritesheetModalOpen] = useState<boolean>(false);
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
@@ -36,6 +38,7 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
 
   const handleSaveProject = () => {
     downloadProjectFile(engine, `projeto_${engine.projectionMode}.garden`);
+    setShowMobileProjectMenu(false);
   };
 
   const handleOpenFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,28 +47,30 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
       openProjectFromFile(engine, file);
       e.target.value = '';
     }
+    setShowMobileProjectMenu(false);
   };
 
   const handleRestore = () => {
     if (confirm('Restaurar última sessão salva automaticamente?')) {
       restoreAutosave(engine);
     }
+    setShowMobileProjectMenu(false);
   };
 
   return (
     <>
-      <header className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-3 md:px-4 select-none shrink-0 z-20 gap-2">
-        {/* Left Section: Brand & Project Actions */}
-        <div className="flex items-center gap-2 md:gap-3 shrink-0">
-          <div className="flex items-center gap-2">
+      <header className="h-14 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-2 sm:px-4 select-none shrink-0 z-20 gap-1.5 sm:gap-2">
+        {/* Left Section: Brand & Canvas Size */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-emerald-950/40 shrink-0">
               <Box className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-bold text-xs sm:text-sm tracking-wider uppercase text-zinc-100 flex items-center gap-1.5">
-                Garden Pixel
-                <span className="hidden sm:inline text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.2 rounded font-mono font-semibold">
-                  EDITOR
+              <h1 className="font-bold text-xs sm:text-sm tracking-wider uppercase text-zinc-100 flex items-center gap-1">
+                <span className="hidden sm:inline">Garden </span>Pixel
+                <span className="hidden md:inline text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.2 rounded font-mono font-semibold">
+                  v0.8.1
                 </span>
               </h1>
               <button
@@ -74,16 +79,16 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
                 title="Clique para redimensionar o canvas"
                 aria-label="Redimensionar canvas"
               >
-                <span>{engine.document.width} × {engine.document.height}px</span>
+                <span>{engine.document.width}×{engine.document.height}</span>
                 <span className="text-[9px] text-zinc-600 group-hover:text-cyan-500">⚙</span>
               </button>
             </div>
           </div>
 
-          <div className="h-6 w-px bg-zinc-800 mx-0.5 sm:mx-1" />
+          <div className="h-6 w-px bg-zinc-800 mx-0.5 hidden sm:block" />
 
-          {/* Project File Actions */}
-          <div className="flex items-center gap-1">
+          {/* Project File Actions (Desktop) */}
+          <div className="hidden sm:flex items-center gap-1">
             <button
               onClick={() => setIsNewProjectModalOpen(true)}
               className="p-1.5 sm:px-2 bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 hover:text-white rounded-lg border border-cyan-800/60 flex items-center gap-1.5 text-xs transition-colors"
@@ -124,23 +129,90 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
                 <RotateCcw className="w-3.5 h-3.5" />
               </button>
             )}
+          </div>
+        </div>
 
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".garden,.json"
-              onChange={handleOpenFileChange}
-              className="hidden"
-            />
+        {/* Center Section: Undo & Redo (ALWAYS VISIBLE on Mobile & Desktop) + Desktop View Controls */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Prominent Undo & Redo Touch Buttons */}
+          <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800 shrink-0 shadow-inner">
+            <button
+              disabled={!engine.history.canUndo}
+              onClick={() => engine.history.undo()}
+              className="w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center text-zinc-300 hover:text-white active:bg-zinc-800 disabled:opacity-25 rounded-lg transition-all"
+              title="Desfazer (Ctrl+Z)"
+              aria-label="Desfazer"
+            >
+              <Undo2 className="w-4 h-4 text-cyan-400 disabled:text-zinc-600" />
+            </button>
+            <button
+              disabled={!engine.history.canRedo}
+              onClick={() => engine.history.redo()}
+              className="w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center text-zinc-300 hover:text-white active:bg-zinc-800 disabled:opacity-25 rounded-lg transition-all"
+              title="Refazer (Ctrl+Y)"
+              aria-label="Refazer"
+            >
+              <Redo2 className="w-4 h-4 text-cyan-400 disabled:text-zinc-600" />
+            </button>
           </div>
 
-          <div className="h-6 w-px bg-zinc-800 mx-0.5 sm:mx-1 hidden sm:block" />
+          {/* Desktop View & Grid Controls */}
+          <div className="hidden md:flex items-center gap-1 bg-zinc-950/60 p-1 rounded-lg border border-zinc-800 shrink-0">
+            <button
+              onClick={() => engine.togglePixelGrid()}
+              className={`p-1.5 rounded transition-colors ${
+                engine.showPixelGrid ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+              title="Alternar Grid de Pixels"
+              aria-label="Alternar Grid de Pixels"
+            >
+              <Grid3X3 className="w-4 h-4" />
+            </button>
 
+            <button
+              onClick={() => engine.toggleIsoGrid()}
+              className={`p-1.5 rounded transition-colors ${
+                engine.showIsoGrid && engine.projectionMode === 'isometric'
+                  ? 'bg-cyan-900/60 text-cyan-300'
+                  : 'text-zinc-500 hover:text-zinc-300'
+              }`}
+              title="Alternar Grid Isométrico 2:1"
+              aria-label="Alternar Grid Isométrico"
+            >
+              <Box className="w-4 h-4" />
+            </button>
+
+            <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+            <button
+              onClick={() => engine.viewport.setZoom(Math.max(1, engine.viewport.zoom - 2))}
+              className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+              title="Diminuir Zoom"
+              aria-label="Diminuir Zoom"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-mono font-semibold px-1 text-zinc-300 min-w-10 text-center">
+              {engine.viewport.zoom}x
+            </span>
+            <button
+              onClick={() => engine.viewport.setZoom(Math.min(64, engine.viewport.zoom + 2))}
+              className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded transition-colors"
+              title="Aumentar Zoom"
+              aria-label="Aumentar Zoom"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Right Section: Mode Selector + Export + Mobile Menus */}
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Mode selector */}
-          <div className="flex items-center bg-zinc-950 p-1 rounded-lg border border-zinc-800/80">
+          <div className="flex items-center bg-zinc-950 p-0.5 sm:p-1 rounded-lg border border-zinc-800/80">
             <button
               onClick={() => engine.setProjectionMode('ortho')}
-              className={`px-2 lg:px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-1.5 sm:px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 transition-all ${
                 engine.projectionMode === 'ortho'
                   ? 'bg-zinc-800 text-zinc-100 shadow-sm'
                   : 'text-zinc-400 hover:text-zinc-200'
@@ -149,26 +221,26 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
               aria-label="Modo 2D Clássico"
             >
               <Compass className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">2D Padrão</span>
+              <span className="hidden xl:inline">2D</span>
             </button>
 
             <button
               onClick={() => engine.setProjectionMode('isometric')}
-              className={`px-2 lg:px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-1.5 sm:px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 transition-all ${
                 engine.projectionMode === 'isometric'
                   ? 'bg-cyan-900/60 text-cyan-300 border border-cyan-700/50 shadow-sm'
                   : 'text-zinc-400 hover:text-cyan-300'
               }`}
-              title="Modo Isométrico 2:1 (Trava 2:1 e Primitivas 3D)"
+              title="Modo Isométrico 2:1"
               aria-label="Modo Isométrico 2:1"
             >
               <Box className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Isométrico 2:1</span>
+              <span className="hidden xl:inline">Iso</span>
             </button>
 
             <button
               onClick={() => engine.setProjectionMode('wrap')}
-              className={`px-2 lg:px-2.5 py-1 text-xs font-medium rounded-md flex items-center gap-1.5 transition-all ${
+              className={`px-1.5 sm:px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 transition-all ${
                 engine.projectionMode === 'wrap'
                   ? 'bg-amber-900/50 text-amber-300 border border-amber-700/50 shadow-sm'
                   : 'text-zinc-400 hover:text-amber-300'
@@ -177,117 +249,39 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
               aria-label="Modo Tileset Wrap"
             >
               <Repeat className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline">Tileset Wrap</span>
+              <span className="hidden xl:inline">Wrap</span>
             </button>
 
             {engine.projectionMode === 'isometric' && (
               <button
                 onClick={() => setIsIsoTilingModalOpen(true)}
-                className="px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 hover:bg-cyan-900/80 transition-all shrink-0"
-                title="Prévia de Repetição de Chão Isométrico 2:1"
+                className="px-1.5 py-1 text-xs font-medium rounded-md flex items-center gap-1 bg-cyan-950/60 border border-cyan-800/80 text-cyan-300 hover:bg-cyan-900/80 transition-all shrink-0"
+                title="Prévia de Chão Isométrico"
                 aria-label="Prévia de Chão Isométrico"
               >
                 <Grid className="w-3 h-3 text-cyan-400" />
-                <span className="hidden 2xl:inline">Chão 2:1</span>
               </button>
             )}
           </div>
-        </div>
 
-        {/* Center Section: History & View Controls */}
-        <div className="hidden md:flex items-center gap-1 bg-zinc-950/60 p-1 rounded-lg border border-zinc-800 shrink-0">
-          <button
-            disabled={!engine.history.canUndo}
-            onClick={() => engine.history.undo()}
-            className="p-1.5 text-zinc-400 hover:text-zinc-100 disabled:opacity-30 disabled:hover:text-zinc-400 rounded transition-colors"
-            title="Desfazer (Ctrl+Z)"
-            aria-label="Desfazer"
-          >
-            <Undo2 className="w-4 h-4" />
-          </button>
-          <button
-            disabled={!engine.history.canRedo}
-            onClick={() => engine.history.redo()}
-            className="p-1.5 text-zinc-400 hover:text-zinc-100 disabled:opacity-30 disabled:hover:text-zinc-400 rounded transition-colors"
-            title="Refazer (Ctrl+Y)"
-            aria-label="Refazer"
-          >
-            <Redo2 className="w-4 h-4" />
-          </button>
-
-          <div className="h-4 w-px bg-zinc-800 mx-1" />
-
-          {/* Pixel Grid Toggle */}
-          <button
-            onClick={() => engine.togglePixelGrid()}
-            className={`p-1.5 rounded transition-colors ${
-              engine.showPixelGrid ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-            title="Alternar Grid de Pixels"
-            aria-label="Alternar Grid de Pixels"
-          >
-            <Grid3X3 className="w-4 h-4" />
-          </button>
-
-          {/* Iso Grid Toggle */}
-          <button
-            onClick={() => engine.toggleIsoGrid()}
-            className={`p-1.5 rounded transition-colors ${
-              engine.showIsoGrid && engine.projectionMode === 'isometric'
-                ? 'bg-cyan-900/60 text-cyan-300'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
-            title="Alternar Grid Isométrico 2:1"
-            aria-label="Alternar Grid Isométrico"
-          >
-            <Box className="w-4 h-4" />
-          </button>
-
-          <div className="h-4 w-px bg-zinc-800 mx-1" />
-
-          {/* Zoom controls */}
-          <button
-            onClick={() => engine.viewport.setZoom(engine.viewport.zoom - 2)}
-            className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded transition-colors"
-            title="Diminuir Zoom"
-            aria-label="Diminuir Zoom"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-mono font-semibold px-1 text-zinc-300 min-w-10 text-center">
-            {engine.viewport.zoom}x
-          </span>
-          <button
-            onClick={() => engine.viewport.setZoom(engine.viewport.zoom + 2)}
-            className="p-1.5 text-zinc-400 hover:text-zinc-100 rounded transition-colors"
-            title="Aumentar Zoom"
-            aria-label="Aumentar Zoom"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Right Section: Export & Tools Dropdown + Shortcuts + Mobile Sidebar Toggle */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Unified Export & Tools Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowExportMenu(!showExportMenu)}
-              className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-medium text-xs px-2.5 sm:px-3.5 py-1.5 rounded-lg shadow-sm transition-all"
+              className="flex items-center gap-1 sm:gap-1.5 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-medium text-xs px-2 sm:px-3 py-1.5 rounded-lg shadow-sm transition-all"
               title="Exportar ou Gerar Recursos"
               aria-label="Exportar ou Gerar Recursos"
             >
               <Download className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Exportar</span>
-              <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
+              <ChevronDown className="w-3 h-3 opacity-80" />
             </button>
 
             {showExportMenu && (
               <div 
-                className="absolute right-0 top-10 w-56 bg-zinc-900 border border-zinc-700/90 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 text-xs"
+                className="absolute right-0 top-10 w-56 bg-zinc-900 border border-zinc-700/90 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 text-xs animate-in fade-in zoom-in-95 duration-100"
                 onClick={(e) => e.stopPropagation()}
               >
-                {/* Image Exports */}
                 <div className="px-2 py-1 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
                   Imagens & Animações
                 </div>
@@ -326,10 +320,8 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
                   <span>GIF Animado (.gif)</span>
                 </button>
 
-                {/* Divider */}
                 <div className="h-px bg-zinc-800 my-0.5" />
 
-                {/* Game & Web Resources */}
                 <div className="px-2 py-1 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
                   Código Web & Games
                 </div>
@@ -381,21 +373,80 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
             )}
           </div>
 
-          {/* Shortcuts Modal Trigger */}
+          {/* Mobile Project Menu Dropdown (Save, Open, New on phones) */}
+          <div className="relative sm:hidden">
+            <button
+              onClick={() => setShowMobileProjectMenu(!showMobileProjectMenu)}
+              className="p-1.5 text-zinc-400 hover:text-white bg-zinc-950 border border-zinc-800 rounded-lg transition-colors"
+              title="Menu do Projeto"
+              aria-label="Menu do Projeto"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
+
+            {showMobileProjectMenu && (
+              <div 
+                className="absolute right-0 top-10 w-48 bg-zinc-900 border border-zinc-700/90 rounded-xl shadow-2xl p-1.5 z-50 flex flex-col gap-1 text-xs animate-in fade-in zoom-in-95 duration-100"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={() => {
+                    setIsNewProjectModalOpen(true);
+                    setShowMobileProjectMenu(false);
+                  }}
+                  className="w-full text-left px-2.5 py-2 rounded-lg text-cyan-300 hover:bg-zinc-800 font-medium flex items-center gap-2"
+                >
+                  <FilePlus className="w-4 h-4 text-cyan-400" />
+                  <span>Novo Projeto / Canvas</span>
+                </button>
+
+                <button
+                  onClick={handleSaveProject}
+                  className="w-full text-left px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 font-medium flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4 text-emerald-400" />
+                  <span>Salvar Projeto (.garden)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    fileInputRef.current?.click();
+                    setShowMobileProjectMenu(false);
+                  }}
+                  className="w-full text-left px-2.5 py-2 rounded-lg text-zinc-200 hover:bg-zinc-800 font-medium flex items-center gap-2"
+                >
+                  <FolderOpen className="w-4 h-4 text-amber-400" />
+                  <span>Abrir Projeto (.garden)</span>
+                </button>
+
+                {hasAutosave() && (
+                  <button
+                    onClick={handleRestore}
+                    className="w-full text-left px-2.5 py-2 rounded-lg text-zinc-400 hover:bg-zinc-800 font-medium flex items-center gap-2 border-t border-zinc-800 pt-1.5"
+                  >
+                    <RotateCcw className="w-4 h-4 text-zinc-400" />
+                    <span>Restaurar Autosave</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Shortcuts Modal Trigger */}
           <button
             onClick={onOpenShortcuts}
-            className="p-1.5 text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 rounded-lg transition-colors"
+            className="hidden md:flex p-1.5 text-zinc-400 hover:text-cyan-300 hover:bg-zinc-800 rounded-lg transition-colors"
             title="Atalhos de Teclado (?)"
             aria-label="Guia de Atalhos de Teclado"
           >
             <HelpCircle className="w-4 h-4" />
           </button>
 
-          {/* Mobile Sidebar Toggle Button */}
+          {/* Mobile / Tablet Sidebar Toggle Button (Layers & Palette) */}
           {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="p-1.5 text-zinc-300 hover:text-white bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 rounded-lg lg:hidden transition-colors"
+              className="p-1.5 text-zinc-200 hover:text-white bg-indigo-950/60 hover:bg-indigo-900/80 border border-indigo-700/60 rounded-lg lg:hidden transition-colors flex items-center gap-1 shadow-sm"
               title="Abrir Camadas e Paleta"
               aria-label="Abrir Camadas e Paleta"
             >
@@ -403,43 +454,52 @@ export const TopBar: React.FC<TopBarProps> = ({ engine, onOpenShortcuts, onToggl
             </button>
           )}
         </div>
+
+        {/* Hidden project file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".garden,.json"
+          onChange={handleOpenFileChange}
+          className="hidden"
+        />
       </header>
 
-    <NormalMapModal
-      isOpen={isNormalMapModalOpen}
-      onClose={() => setIsNormalMapModalOpen(false)}
-      engine={engine}
-    />
+      <NormalMapModal
+        isOpen={isNormalMapModalOpen}
+        onClose={() => setIsNormalMapModalOpen(false)}
+        engine={engine}
+      />
 
-    <IsometricTilingModal
-      isOpen={isIsoTilingModalOpen}
-      onClose={() => setIsIsoTilingModalOpen(false)}
-      engine={engine}
-    />
+      <IsometricTilingModal
+        isOpen={isIsoTilingModalOpen}
+        onClose={() => setIsIsoTilingModalOpen(false)}
+        engine={engine}
+      />
 
-    <SpritesheetModal
-      isOpen={isSpritesheetModalOpen}
-      onClose={() => setIsSpritesheetModalOpen(false)}
-      engine={engine}
-    />
+      <SpritesheetModal
+        isOpen={isSpritesheetModalOpen}
+        onClose={() => setIsSpritesheetModalOpen(false)}
+        engine={engine}
+      />
 
-    <NewProjectModal
-      isOpen={isNewProjectModalOpen}
-      onClose={() => setIsNewProjectModalOpen(false)}
-      engine={engine}
-    />
+      <NewProjectModal
+        isOpen={isNewProjectModalOpen}
+        onClose={() => setIsNewProjectModalOpen(false)}
+        engine={engine}
+      />
 
-    <GifExportModal
-      isOpen={isGifModalOpen}
-      onClose={() => setIsGifModalOpen(false)}
-      engine={engine}
-    />
+      <GifExportModal
+        isOpen={isGifModalOpen}
+        onClose={() => setIsGifModalOpen(false)}
+        engine={engine}
+      />
 
-    <CodeExportModal
-      isOpen={isCodeModalOpen}
-      onClose={() => setIsCodeModalOpen(false)}
-      engine={engine}
-    />
-  </>
-);
+      <CodeExportModal
+        isOpen={isCodeModalOpen}
+        onClose={() => setIsCodeModalOpen(false)}
+        engine={engine}
+      />
+    </>
+  );
 };

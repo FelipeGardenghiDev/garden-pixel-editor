@@ -2,5 +2,10 @@
   "appId": "com.gardenghi.gardenpixeleditor",
   "appName": "Garden Pixel Editor",
   "webDir": "dist",
-  "bundledWebRuntime": false
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#09090b"
+  }
 }

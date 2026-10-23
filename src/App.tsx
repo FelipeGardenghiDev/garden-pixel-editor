@@ -10,6 +10,7 @@ import { StatusBar } from './components/StatusBar';
 import { FloatingPreview } from './components/FloatingPreview';
 import { ShortcutsModal } from './components/ShortcutsModal';
 import { downloadProjectFile } from './core/project-file';
+import { Undo2, Redo2, Maximize2 } from 'lucide-react';
 
 export const App: React.FC = () => {
   // Stable reference to the EditorEngine instance via state initializer
@@ -111,7 +112,7 @@ export const App: React.FC = () => {
   }, [engine]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100">
+    <div className="flex flex-col h-screen h-[100dvh] w-screen overflow-hidden bg-zinc-950 font-sans text-zinc-100">
       <TopBar 
         engine={engine} 
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
@@ -120,11 +121,52 @@ export const App: React.FC = () => {
       <BrushSettingsBar engine={engine} />
 
       <div className="flex flex-1 overflow-hidden relative">
-        <ToolBar engine={engine} />
+        <ToolBar 
+          engine={engine} 
+          onOpenPalette={() => setIsMobileSidebarOpen(true)}
+        />
         <main className="flex-1 relative overflow-hidden flex flex-col">
           <div className="flex-1 relative overflow-hidden">
             <ViewportCanvas engine={engine} />
             <FloatingPreview engine={engine} />
+
+            {/* Floating Mobile Canvas Quick Action Bar */}
+            <div className="sm:hidden absolute top-3 right-3 z-30 flex items-center gap-1 bg-zinc-900/95 border border-zinc-700/80 p-1 rounded-2xl shadow-2xl backdrop-blur-md">
+              <button
+                disabled={!engine.history.canUndo}
+                onClick={() => engine.history.undo()}
+                className="w-9 h-9 flex items-center justify-center text-zinc-300 hover:text-white active:bg-zinc-800 disabled:opacity-25 rounded-xl transition-all"
+                title="Desfazer"
+                aria-label="Desfazer"
+              >
+                <Undo2 className="w-4 h-4 text-cyan-400 disabled:text-zinc-600" />
+              </button>
+              <button
+                disabled={!engine.history.canRedo}
+                onClick={() => engine.history.redo()}
+                className="w-9 h-9 flex items-center justify-center text-zinc-300 hover:text-white active:bg-zinc-800 disabled:opacity-25 rounded-xl transition-all"
+                title="Refazer"
+                aria-label="Refazer"
+              >
+                <Redo2 className="w-4 h-4 text-cyan-400 disabled:text-zinc-600" />
+              </button>
+              <div className="w-px h-5 bg-zinc-800 mx-0.5" />
+              <button
+                onClick={() => {
+                  engine.viewport.centerInView(
+                    window.innerWidth,
+                    window.innerHeight,
+                    engine.document.width,
+                    engine.document.height
+                  );
+                }}
+                className="w-8 h-8 flex items-center justify-center text-zinc-400 hover:text-cyan-300 active:bg-zinc-800 rounded-xl transition-all"
+                title="Centralizar e Enquadrar Canvas"
+                aria-label="Centralizar Canvas"
+              >
+                <Maximize2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <Timeline engine={engine} />
         </main>
